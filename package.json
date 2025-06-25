@@ -14,8 +14,8 @@
     "format": "prettier --write src",
     "typecheck": "tsgo --noEmit",
     "knip": "knip",
-    "check": "concurrently -c auto -g \"bun run typecheck\" \"bun run lint\" \"bun run test\" \"bun run knip\"",
-    "check:all": "concurrently -c auto -g \"bun run typecheck\" \"bun run lint\" \"bun run test:all\" \"bun run knip\"",
+    "check": "concurrently -c auto -g \"bun typecheck\" \"bun lint\" \"bun test\" \"bun knip\"",
+    "check:all": "concurrently -c auto -g \"bun typecheck\" \"bun lint\" \"bun test:all\" \"bun knip\"",
     "build": "bun build src/main.ts --target node --outdir dist",
     "prepare": "husky"
   },
