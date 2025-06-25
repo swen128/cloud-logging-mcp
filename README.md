@@ -8,55 +8,39 @@ A Model Context Protocol (MCP) server that provides access to Google Cloud Loggi
 - **Get Log Details**: Retrieve detailed information about specific log entries
 - **List Projects**: List available GCP projects
 
-## Prerequisites
+## Getting Started
+
+### Prerequisites
 
 - [Bun](https://bun.sh/) runtime
 - Google Cloud credentials configured
 - Access to Google Cloud Logging API
 
-## Installation
+### Quick Start
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd cloud-logging-mcp
-
-# Install dependencies
-bun install
-```
-
-## Configuration
-
-### Google Cloud Authentication
-
-The server requires Google Cloud credentials. You can provide them in one of these ways:
-
-1. **Application Default Credentials** (recommended):
+1. **Install dependencies:**
    ```bash
+   bun install
+   ```
+
+2. **Set up Google Cloud credentials:**
+   ```bash
+   # Option 1: Use gcloud CLI
    gcloud auth application-default login
+   
+   # Option 2: Use service account
+   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
    ```
 
-2. **Service Account Key**:
-   ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"
-   ```
-
-3. **Project ID**:
+3. **Set your project ID:**
    ```bash
    export GOOGLE_CLOUD_PROJECT="your-project-id"
    ```
 
-## Usage
-
-### Running the Server
-
-```bash
-# Start the server
-bun run start
-
-# Development mode with auto-reload
-bun run dev
-```
+4. **Run the server:**
+   ```bash
+   bun run start
+   ```
 
 ### Using with Claude Desktop
 
@@ -79,11 +63,25 @@ Add the following to your Claude Desktop configuration file:
 }
 ```
 
-## Available Tools
+## Example Tool Usage
 
-### queryLogs
+### Query Logs
 
 Search and filter logs from Google Cloud Logging.
+
+```json
+{
+  "tool": "queryLogs",
+  "input": {
+    "projectId": "my-project",
+    "filter": "resource.type=\"cloud_run_revision\" AND severity>=ERROR",
+    "orderBy": {
+      "timestamp": "desc"
+    },
+    "pageSize": 50
+  }
+}
+```
 
 Parameters:
 - `projectId`: GCP project ID
@@ -94,19 +92,50 @@ Parameters:
 - `resourceNames`: Specific log resources to query
 - `summaryFields`: Fields to include in the summary
 
-### getLogDetail
+### Get Log Detail
 
 Retrieve complete details for a specific log entry.
+
+```json
+{
+  "tool": "getLogDetail",
+  "input": {
+    "projectId": "my-project",
+    "logId": "65f5a7b60000000001234567"
+  }
+}
+```
 
 Parameters:
 - `projectId`: GCP project ID
 - `logId`: The unique identifier of the log entry
 
-### listProjects
+### List Projects
 
 List all accessible Google Cloud projects.
 
+```json
+{
+  "tool": "listProjects",
+  "input": {}
+}
+```
+
 Parameters: None
+
+## Common Filter Examples
+
+- **By severity:** `severity>=ERROR`
+- **By time range:** `timestamp>="2024-01-01T00:00:00Z"`
+- **By resource:** `resource.type="cloud_run_revision"`
+- **By text search:** `textPayload:"connection timeout"`
+- **Combined:** `resource.type="k8s_container" AND severity=ERROR AND timestamp>="2024-01-01T00:00:00Z"`
+
+## Troubleshooting
+
+1. **Authentication errors:** Ensure your Google Cloud credentials are properly configured
+2. **Permission errors:** Check that your account has the `logging.logEntries.list` permission
+3. **No results:** Verify your filter syntax and that logs exist for your query
 
 ## Development
 
