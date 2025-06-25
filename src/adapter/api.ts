@@ -18,18 +18,18 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
   }
 
   async getDefaultProjectId(): Promise<string | undefined> {
-    if (this.defaultProjectId !== undefined && this.defaultProjectId !== '') {
-      return this.defaultProjectId;
-    }
-    
-    // Try to get from the Logging client's detected project
-    try {
-      const detectedProjectId = await this.logging.auth.getProjectId();
-      this.defaultProjectId = detectedProjectId;
-      return detectedProjectId;
-    } catch {
-      return undefined;
-    }
+    return (this.defaultProjectId !== undefined && this.defaultProjectId !== '')
+      ? this.defaultProjectId
+      : await (async (): Promise<string | undefined> => {
+          // Try to get from the Logging client's detected project
+          try {
+            const detectedProjectId = await this.logging.auth.getProjectId();
+            this.defaultProjectId = detectedProjectId;
+            return detectedProjectId;
+          } catch {
+            return undefined;
+          }
+        })();
   }
 
   async entries(params: CloudLoggingQuery): Promise<
@@ -59,9 +59,9 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
         orderBy: params.orderBy !== undefined ? `timestamp ${params.orderBy.timestamp}` : "timestamp desc",
       };
 
-      if (params.resourceNames !== undefined && params.resourceNames.length > 0) {
-        request.resourceNames = params.resourceNames;
-      }
+      request.resourceNames = (params.resourceNames !== undefined && params.resourceNames.length > 0)
+        ? params.resourceNames
+        : request.resourceNames;
 
       const getEntriesResult = await this.logging.getEntries(request);
       const entries = getEntriesResult[0];
@@ -71,27 +71,7 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
         const metadata: Record<string, unknown> = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
         const data: unknown = entry.data;
 
-        const timestamp = ((): string => {
-          if (metadata.timestamp !== undefined && metadata.timestamp !== null) {
-            if (typeof metadata.timestamp === 'string') {
-              return metadata.timestamp;
-            } else if (metadata.timestamp instanceof Date) {
-              return metadata.timestamp.toISOString();
-            } else if (typeof metadata.timestamp === 'object' && 'seconds' in metadata.timestamp) {
-              // Handle Google protobuf Timestamp
-              const timestampObj = metadata.timestamp;
-              const seconds = 'seconds' in timestampObj ? timestampObj.seconds : undefined;
-              if (seconds !== undefined) {
-                return new Date(Number(seconds) * 1000).toISOString();
-              }
-              return new Date().toISOString();
-            } else {
-              return new Date().toISOString();
-            }
-          } else {
-            return new Date().toISOString();
-          }
-        })()
+        const timestamp = this.extractTimestamp(metadata.timestamp)
 
         return {
           insertId: createLogId(typeof metadata.insertId === 'string' ? metadata.insertId : ""),
@@ -125,72 +105,94 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
     }
   }
 
-  private mapSeverity(severity: unknown): LogSeverity {
-    if (typeof severity !== 'string') {
-      return "DEFAULT";
+  private extractTimestamp(timestamp: unknown): string {
+    if (timestamp === undefined || timestamp === null) {
+      return new Date().toISOString();
     }
     
-    switch (severity) {
-      case "DEFAULT":
-      case "DEBUG":
-      case "INFO":
-      case "NOTICE":
-      case "WARNING":
-      case "ERROR":
-      case "CRITICAL":
-      case "ALERT":
-      case "EMERGENCY":
-        return severity;
-      default:
-        return "DEFAULT";
+    if (typeof timestamp === 'string') {
+      return timestamp;
     }
+    
+    if (timestamp instanceof Date) {
+      return timestamp.toISOString();
+    }
+    
+    if (typeof timestamp === 'object' && 'seconds' in timestamp) {
+      // Handle Google protobuf Timestamp
+      const seconds = timestamp.seconds;
+      return (seconds !== undefined)
+        ? new Date(Number(seconds) * 1000).toISOString()
+        : new Date().toISOString();
+    }
+    
+    return new Date().toISOString();
+  }
+
+  private mapSeverity(severity: unknown): LogSeverity {
+    return (typeof severity !== 'string')
+      ? "DEFAULT"
+      : ((): LogSeverity => {
+          switch (severity) {
+            case "DEFAULT":
+            case "DEBUG":
+            case "INFO":
+            case "NOTICE":
+            case "WARNING":
+            case "ERROR":
+            case "CRITICAL":
+            case "ALERT":
+            case "EMERGENCY":
+              return severity;
+            default:
+              return "DEFAULT";
+          }
+        })();
   }
 
   private convertProtoPayload(payload: unknown): Record<string, unknown> | undefined {
-    if (payload === null || payload === undefined) {
-      return undefined;
-    }
-    
-    if (typeof payload === 'object') {
-      // Convert protobuf object to plain object
-      return this.cloneObject(payload);
-    }
-    
-    return undefined;
+    return (payload === null || payload === undefined)
+      ? undefined
+      : (typeof payload === 'object')
+        ? this.cloneObject(payload) // Convert protobuf object to plain object
+        : undefined;
   }
 
   private cloneObject(obj: unknown): Record<string, unknown> | undefined {
     if (typeof obj !== 'object' || obj === null) {
       return undefined;
     }
+    
     const str = JSON.stringify(obj);
     const parsed: unknown = JSON.parse(str);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      // Create a new object to ensure proper typing
-      const result: Record<string, unknown> = {};
-      for (const key in parsed) {
-        if (Object.prototype.hasOwnProperty.call(parsed, key)) {
-          result[key] = Object.getOwnPropertyDescriptor(parsed, key)?.value;
-        }
-      }
-      return result;
+    
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return undefined;
     }
-    return undefined;
+    
+    // Create a new object to ensure proper typing
+    const result: Record<string, unknown> = {};
+    for (const key in parsed) {
+      if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+        result[key] = Object.getOwnPropertyDescriptor(parsed, key)?.value;
+      }
+    }
+    return result;
   }
 
   private mapProjectState(state: unknown): Project["state"] {
-    if (typeof state !== 'string') {
-      return "ACTIVE";
-    }
-    
-    switch (state) {
-      case "ACTIVE":
-      case "DELETE_REQUESTED":
-      case "DELETE_IN_PROGRESS":
-        return state;
-      default:
-        return "ACTIVE";
-    }
+    return (typeof state !== 'string')
+      ? "ACTIVE"
+      : ((): Project["state"] => {
+          switch (state) {
+            case "ACTIVE":
+            case "DELETE_REQUESTED":
+            case "DELETE_IN_PROGRESS":
+              return state;
+            default:
+              return "ACTIVE";
+          }
+        })();
   }
 
   private mapErrorCode(code: number | undefined): CloudLoggingError["code"] {

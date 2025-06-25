@@ -18,21 +18,18 @@ const SENSITIVE_PATTERNS = [
  * @returns Redacted text
  */
 export function redactSensitiveInfo(text: string): string {
-  if (text === '') return text;
-
-  const redactedText = SENSITIVE_PATTERNS.reduce((currentText, pattern) => {
-    return currentText.replace(pattern, (match) => {
-      if (pattern.toString().includes("key|api")) {
-        // For API keys, preserve first and last 4 chars
-        return match.replace(/(['"'])[^'"']+(['"'])/g, (m: string, p1: string, p2: string) => {
-          const value = m.substring(p1.length, m.length - p2.length);
-          if (value.length <= 8) return `${p1}${"*".repeat(value.length)}${p2}`;
-          return `${p1}${value.substring(0, 4)}${"*".repeat(value.length - 8)}${value.substring(value.length - 4)}${p2}`;
+  return text === '' 
+    ? text
+    : SENSITIVE_PATTERNS.reduce((currentText, pattern) => {
+        return currentText.replace(pattern, (match) => {
+          return pattern.toString().includes("key|api")
+            ? match.replace(/(['"'])[^'"']+(['"'])/g, (m: string, p1: string, p2: string) => {
+                const value = m.substring(p1.length, m.length - p2.length);
+                return value.length <= 8
+                  ? `${p1}${"*".repeat(value.length)}${p2}`
+                  : `${p1}${value.substring(0, 4)}${"*".repeat(value.length - 8)}${value.substring(value.length - 4)}${p2}`;
+              })
+            : "*".repeat(match.length);
         });
-      }
-      return "*".repeat(match.length);
-    });
-  }, text);
-
-  return redactedText;
+      }, text);
 }

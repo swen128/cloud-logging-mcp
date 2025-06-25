@@ -66,15 +66,11 @@ export class LogCacheImpl implements LogCache {
    */
   get(id: LogId): RawLogEntry | undefined {
     const cached = this.cache.get(id);
-    if (!cached) return undefined;
-
-    // Check if entry is expired
-    if (Date.now() - cached.timestamp > this.ttlMs) {
-      this.cache.delete(id);
-      return undefined;
-    }
-
-    return cached.entry;
+    return !cached
+      ? undefined
+      : (Date.now() - cached.timestamp > this.ttlMs)
+        ? (this.cache.delete(id), undefined)
+        : cached.entry;
   }
 
   /**

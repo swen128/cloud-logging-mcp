@@ -26,12 +26,12 @@ export function summarize(entry: RawLogEntry, summaryFields?: string[]): LogSumm
 const extractLogSummaryText = (entry: RawLogEntry, summaryFields?: string[]): string => {
   const useFields = Array.isArray(summaryFields) && summaryFields.length > 0;
 
-  if (useFields && summaryFields !== undefined) {
-    const summaryFromFields = processSummaryFields(summaryFields, entry);
-
-    return summaryFromFields === "" ? extractSummaryWithoutFields(entry) : summaryFromFields;
-  }
-  return extractSummaryWithoutFields(entry);
+  return (useFields && summaryFields !== undefined)
+    ? ((): string => {
+        const summaryFromFields = processSummaryFields(summaryFields, entry);
+        return summaryFromFields === "" ? extractSummaryWithoutFields(entry) : summaryFromFields;
+      })()
+    : extractSummaryWithoutFields(entry);
 };
 
 const processSummaryFields = (fields: string[], entry: RawLogEntry): string => {
@@ -59,10 +59,9 @@ const viewPath = (pathStr: string, obj: unknown): unknown => {
   };
   
   const result = parts.reduce<unknown>((current, part) => {
-    if (typeof current === 'object' && current !== null && part in current) {
-      return getProperty(current, part);
-    }
-    return undefined;
+    return (typeof current === 'object' && current !== null && part in current)
+      ? getProperty(current, part)
+      : undefined;
   }, obj);
   
   return result;
@@ -84,10 +83,9 @@ const findMessage = (obj: unknown): string | undefined => {
 
   if ('message' in obj) {
     const descriptor = Object.getOwnPropertyDescriptor(obj, 'message');
-    if (descriptor !== undefined && 'value' in descriptor) {
-      return String(descriptor.value);
-    }
-    return undefined;
+    return (descriptor !== undefined && 'value' in descriptor)
+      ? String(descriptor.value)
+      : undefined;
   }
 
   for (const value of Object.values(obj)) {
@@ -112,20 +110,16 @@ const getTextPayload = (entry: RawLogEntry): string | undefined => {
 
 const getJsonMessage = (entry: RawLogEntry): string | undefined => {
   const payload = entry.jsonPayload;
-  if (typeof payload === 'object' && payload !== null && 'message' in payload) {
-    const val = payload.message;
-    return typeof val === "string" ? val : undefined;
-  }
-  return undefined;
+  return (typeof payload === 'object' && payload !== null && 'message' in payload)
+    ? (typeof payload.message === "string" ? payload.message : undefined)
+    : undefined;
 };
 
 const getProtoMessage = (entry: RawLogEntry): string | undefined => {
   const payload = entry.protoPayload;
-  if (typeof payload === 'object' && payload !== null && 'message' in payload) {
-    const val = payload.message;
-    return typeof val === "string" ? val : undefined;
-  }
-  return undefined;
+  return (typeof payload === 'object' && payload !== null && 'message' in payload)
+    ? (typeof payload.message === "string" ? payload.message : undefined)
+    : undefined;
 };
 
 const getNestedJsonMessage = (entry: RawLogEntry): string | undefined => {
