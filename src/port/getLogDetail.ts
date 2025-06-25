@@ -8,7 +8,7 @@ const inputSchema = z.object({
   logId: z.string(),
 });
 
-export type GetLogDetailInput = z.infer<typeof inputSchema>;
+type GetLogDetailInput = z.infer<typeof inputSchema>;
 
 export const getLogDetailTool = (dependencies: {
   api: CloudLoggingApi;
@@ -18,21 +18,18 @@ export const getLogDetailTool = (dependencies: {
     name: "getLogDetail",
     description: "Returns the whole record of a log with the given ID",
     inputSchema: inputSchema,
-    handler: async ({ input }: { input: GetLogDetailInput }) => {
-      let projectId = input.projectId;
+    handler: async ({ input }: { input: GetLogDetailInput }): Promise<{ content: Array<{ type: "text"; text: string }> }> => {
+      const projectId = input.projectId ?? await dependencies.api.getDefaultProjectId();
       
-      if (!projectId) {
-        projectId = await dependencies.api.getDefaultProjectId();
-        if (!projectId) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you're authenticated with gcloud.",
-              },
-            ],
-          };
-        }
+      if (projectId === undefined || projectId === '') {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you're authenticated with gcloud.",
+            },
+          ],
+        };
       }
 
       const result = await getLogDetail(dependencies)({ ...input, projectId });

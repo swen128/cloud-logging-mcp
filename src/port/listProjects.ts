@@ -20,7 +20,7 @@ export const listProjects = (api: CloudLoggingApi): Tool<typeof ListProjectsInpu
     name: "listProjects",
     description: "Lists available Google Cloud projects that the authenticated user has access to",
     inputSchema: ListProjectsInputSchema,
-    handler: async ({ input }) => {
+    handler: async ({ input }): Promise<{ content: Array<{ type: "text"; text: string }> }> => {
       const result = await listProjectsDomain(api)(input);
 
       if (result.isErr()) {
@@ -44,7 +44,7 @@ export const listProjects = (api: CloudLoggingApi): Tool<typeof ListProjectsInpu
               {
                 projects: projects.map((p) => ({
                   projectId: p.projectId,
-                  displayName: p.displayName || p.name,
+                  displayName: p.displayName ?? p.name,
                   state: p.state,
                 })),
                 nextPageToken,

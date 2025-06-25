@@ -1,9 +1,11 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { createCloudLoggingTools } from "./index";
+import { GoogleCloudLoggingApiClient } from "./adapter/api";
+import { LogCacheImpl } from "./adapter/cache";
+import { createTools } from "./port";
 
-export const createServer = () => {
+export const createServer = (): Server => {
   const server = new Server(
     {
       name: "Google Cloud Logging MCP",
@@ -16,16 +18,16 @@ export const createServer = () => {
     },
   );
 
-  const { queryLogs, getLogDetail, listProjects } = createCloudLoggingTools({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT,
-  });
+  const api = new GoogleCloudLoggingApiClient(process.env.GOOGLE_CLOUD_PROJECT);
+  const cache = new LogCacheImpl();
+  const { queryLogs, getLogDetail, listProjects } = createTools({ api, cache });
 
   // Handle tools/list request
   server.setRequestHandler(
     z.object({
       method: z.literal("tools/list"),
     }),
-    async () => ({
+    (): { tools: Array<{ name: string; description: string; inputSchema: unknown }> } => ({
       tools: [
         {
           name: queryLogs.name,
@@ -52,30 +54,70 @@ export const createServer = () => {
       method: z.literal("tools/call"),
       params: z.object({
         name: z.string(),
-        arguments: z.any().optional(),
+        arguments: z.unknown().optional(),
       }),
     }),
-    async (request) => {
+    async (request): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> => {
       const { name, arguments: args } = request.params;
 
-      const tools = { queryLogs, getLogDetail, listProjects };
-      const tool = Object.values(tools).find((t) => t.name === name);
-
-      if (!tool) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text" as const,
-              text: `Unknown tool: ${name}`,
-            },
-          ],
-        };
-      }
-
       try {
-        const result = await tool.handler({ input: args || {} });
-        return result;
+        switch (name) {
+          case "queryLogs": {
+            const validatedInput = queryLogs.inputSchema.safeParse(args ?? {});
+            if (!validatedInput.success) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Invalid input for tool ${name}: ${validatedInput.error.message}`,
+                  },
+                ],
+              };
+            }
+            return await queryLogs.handler({ input: validatedInput.data });
+          }
+          case "getLogDetail": {
+            const validatedInput = getLogDetail.inputSchema.safeParse(args ?? {});
+            if (!validatedInput.success) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Invalid input for tool ${name}: ${validatedInput.error.message}`,
+                  },
+                ],
+              };
+            }
+            return await getLogDetail.handler({ input: validatedInput.data });
+          }
+          case "listProjects": {
+            const validatedInput = listProjects.inputSchema.safeParse(args ?? {});
+            if (!validatedInput.success) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Invalid input for tool ${name}: ${validatedInput.error.message}`,
+                  },
+                ],
+              };
+            }
+            return await listProjects.handler({ input: validatedInput.data });
+          }
+          default:
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Unknown tool: ${name}`,
+                },
+              ],
+            };
+        }
       } catch (error) {
         return {
           isError: true,

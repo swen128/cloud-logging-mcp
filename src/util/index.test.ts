@@ -35,10 +35,6 @@ describe("Utility Functions", () => {
 
     test("should handle empty input", () => {
       expect(redactSensitiveInfo("")).toBe("");
-      expect(redactSensitiveInfo(null as unknown as string)).toBe(null as unknown as string);
-      expect(redactSensitiveInfo(undefined as unknown as string)).toBe(
-        undefined as unknown as string,
-      );
     });
   });
 

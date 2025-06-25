@@ -7,20 +7,20 @@ export { redactSensitiveInfo } from "./redact";
  * @returns The extracted value or undefined if not found
  */
 export function getValueByPath(obj: unknown, path: string): unknown {
-  if (!obj || typeof obj !== "object") {
+  if (obj === null || obj === undefined || typeof obj !== "object") {
     return undefined;
   }
   
   const parts = path.split(".");
-  let current: unknown = obj;
-
-  for (const part of parts) {
-    if (current && typeof current === "object" && part in current) {
-      current = (current as Record<string, unknown>)[part];
-    } else {
-      return undefined;
+  const current = parts.reduce<unknown>((acc, part) => {
+    if (acc !== null && acc !== undefined && typeof acc === "object" && part in acc) {
+      // Use Object.prototype to access the property
+      return Object.prototype.hasOwnProperty.call(acc, part) 
+        ? Object.getOwnPropertyDescriptor(acc, part)?.value 
+        : undefined;
     }
-  }
+    return undefined;
+  }, obj);
 
   return current;
 }

@@ -6,7 +6,7 @@ import type { LogId } from "./log-id";
 /**
  * Log entry summary with essential information
  */
-export type LogSummary = {
+type LogSummary = {
   insertId: LogId;
   timestamp: string;
   severity: LogSeverity;
@@ -25,11 +25,11 @@ export function summarize(entry: RawLogEntry, summaryFields?: string[]): LogSumm
 }
 
 // TODO: refactor
-const extractLogSummaryText = (entry: RawLogEntry, summaryFields?: string[]) => {
+const extractLogSummaryText = (entry: RawLogEntry, summaryFields?: string[]): string => {
   const useFields = R.both(R.is(Array), R.complement(R.isEmpty))(summaryFields);
 
-  if (useFields) {
-    const summaryFromFields = processSummaryFields(summaryFields as string[])(entry);
+  if (useFields && summaryFields !== undefined) {
+    const summaryFromFields = processSummaryFields(summaryFields)(entry);
 
     return R.unless(
       R.complement(R.isEmpty),
@@ -43,7 +43,7 @@ const extractLogSummaryText = (entry: RawLogEntry, summaryFields?: string[]) => 
 // TODO: refactor
 const processSummaryFields = R.curry((fields: string[], entry: RawLogEntry): string => {
   const createPart = (field: string): string | null => {
-    const value = viewPath(field, entry as Record<string, unknown>);
+    const value = viewPath(field, entry);
     return R.isNil(value) ? null : `${field}: ${String(value)}`;
   };
 
@@ -54,10 +54,14 @@ const processSummaryFields = R.curry((fields: string[], entry: RawLogEntry): str
   )(fields);
 });
 
-const viewPath = (pathStr: string, obj: Record<string, unknown>): unknown =>
-  R.path(R.split(".", pathStr), obj);
+const viewPath = (pathStr: string, obj: unknown): unknown => {
+  if (typeof obj !== 'object' || obj === null) {
+    return undefined;
+  }
+  return R.path(R.split(".", pathStr), obj);
+};
 
-const extractSummaryWithoutFields = (entry: RawLogEntry) =>
+const extractSummaryWithoutFields = (entry: RawLogEntry): string =>
   truncate(
     getTextPayload(entry) ??
       getJsonMessage(entry) ??
@@ -72,14 +76,23 @@ const extractSummaryWithoutFields = (entry: RawLogEntry) =>
 const findMessage = (obj: unknown): string | undefined => {
   if (!R.is(Object, obj) || R.isNil(obj)) return undefined;
 
-  const record = obj as Record<string, unknown>;
-  if (R.has("message", record)) return String(record.message);
+  if (typeof obj === 'object' && obj !== null && 'message' in obj) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, 'message');
+    if (descriptor !== undefined && 'value' in descriptor) {
+      return String(descriptor.value);
+    }
+    return undefined;
+  }
 
-  return R.reduce(
-    (acc: string | undefined, value) => acc ?? findMessage(value),
-    undefined,
-    R.values(record),
-  );
+  if (typeof obj === 'object' && obj !== null) {
+    return R.reduce(
+      (acc: string | undefined, value) => acc ?? findMessage(value),
+      undefined,
+      R.values(obj),
+    );
+  }
+  
+  return undefined;
 };
 
 const flatMap =
@@ -101,7 +114,7 @@ const getProtoMessage = R.pipe(R.path(["protoPayload", "message"]), (val) =>
 
 const getNestedJsonMessage = R.pipe(R.prop("jsonPayload"), findMessage);
 
-const truncate = (str: string) => (str.length > 300 ? `${str.substring(0, 300)}...` : str);
+const truncate = (str: string): string => (str.length > 300 ? `${str.substring(0, 300)}...` : str);
 
 const stringifyJsonPayload = R.pipe(R.prop("jsonPayload"), flatMap(JSON.stringify));
 

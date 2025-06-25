@@ -46,7 +46,7 @@ export class LogCacheImpl implements LogCache {
    * @param id The log ID
    * @param entry The log entry
    */
-  add(id: LogId, entry: RawLogEntry) {
+  add(id: LogId, entry: RawLogEntry): void {
     // If cache is full, remove oldest entries
     if (this.cache.size >= this.maxEntries) {
       this.evictOldestEntries();
@@ -64,7 +64,7 @@ export class LogCacheImpl implements LogCache {
    * @param id The log ID
    * @returns The log entry or undefined if not found or expired
    */
-  get(id: LogId) {
+  get(id: LogId): RawLogEntry | undefined {
     const cached = this.cache.get(id);
     if (!cached) return undefined;
 

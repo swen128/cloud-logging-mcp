@@ -49,7 +49,7 @@ export const getLogDetail =
     const entry = entries[0];
     
     // Add to cache for future requests
-    if (entry) {
+    if (entry !== undefined) {
       cache.add(logIdTyped, entry);
     }
 

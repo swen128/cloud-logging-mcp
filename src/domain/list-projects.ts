@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { CloudLoggingApi } from "./api.js";
 import { ok, err, Result } from "neverthrow";
 
-export const ProjectSchema = z.object({
+const ProjectSchema = z.object({
   projectId: z.string(),
   name: z.string(),
   displayName: z.string().optional(),

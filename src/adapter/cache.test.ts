@@ -3,6 +3,7 @@ import type { RawLogEntry } from "../domain/api";
 import { createLogId } from "../domain/log-id";
 import { LogCacheImpl } from "./cache";
 
+
 describe("LogCache", () => {
   test("should add and retrieve entries", () => {
     const cache = new LogCacheImpl({
@@ -84,9 +85,23 @@ describe("LogCache", () => {
       smallCache.add(logId3, { insertId: logId3, timestamp: new Date().toISOString(), severity: "INFO" });
 
       // All entries should be present
-      expect(smallCache.get(logId1)).toEqual({ insertId: logId1, timestamp: expect.any(String), severity: "INFO" });
-      expect(smallCache.get(logId2)).toEqual({ insertId: logId2, timestamp: expect.any(String), severity: "INFO" });
-      expect(smallCache.get(logId3)).toEqual({ insertId: logId3, timestamp: expect.any(String), severity: "INFO" });
+      const entry1 = smallCache.get(logId1);
+      expect(entry1).toBeDefined();
+      expect(entry1?.insertId).toEqual(logId1);
+      expect(entry1?.severity).toBe("INFO");
+      expect(typeof entry1?.timestamp).toBe("string");
+      
+      const entry2 = smallCache.get(logId2);
+      expect(entry2).toBeDefined();
+      expect(entry2?.insertId).toEqual(logId2);
+      expect(entry2?.severity).toBe("INFO");
+      expect(typeof entry2?.timestamp).toBe("string");
+      
+      const entry3 = smallCache.get(logId3);
+      expect(entry3).toBeDefined();
+      expect(entry3?.insertId).toEqual(logId3);
+      expect(entry3?.severity).toBe("INFO");
+      expect(typeof entry3?.timestamp).toBe("string");
 
       // Add one more entry, should evict the oldest (log-1)
       mockTime += 1000;
@@ -94,9 +109,20 @@ describe("LogCache", () => {
 
       // log-1 should be evicted
       expect(smallCache.get(logId1)).toBeUndefined();
-      expect(smallCache.get(logId2)).toEqual({ insertId: logId2, timestamp: expect.any(String), severity: "INFO" });
-      expect(smallCache.get(logId3)).toEqual({ insertId: logId3, timestamp: expect.any(String), severity: "INFO" });
-      expect(smallCache.get(logId4)).toEqual({ insertId: logId4, timestamp: expect.any(String), severity: "INFO" });
+      const entry2After = smallCache.get(logId2);
+      expect(entry2After).toBeDefined();
+      expect(entry2After?.insertId).toEqual(logId2);
+      expect(entry2After?.severity).toBe("INFO");
+      
+      const entry3After = smallCache.get(logId3);
+      expect(entry3After).toBeDefined();
+      expect(entry3After?.insertId).toEqual(logId3);
+      expect(entry3After?.severity).toBe("INFO");
+      
+      const entry4After = smallCache.get(logId4);
+      expect(entry4After).toBeDefined();
+      expect(entry4After?.insertId).toEqual(logId4);
+      expect(entry4After?.severity).toBe("INFO");
     } finally {
       // Restore original Date.now
       Date.now = originalNow;

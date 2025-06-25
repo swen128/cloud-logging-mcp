@@ -16,7 +16,7 @@ describe("summarize", () => {
   it("should correctly map fields (insertId, timestamp, severity)", () => {
     const entry = mockEntry({ textPayload: "Test payload" });
     const result = summarize(entry);
-    expect(result.insertId).toBe(createLogId("test-insert-id"));
+    expect(result.insertId).toEqual(createLogId("test-insert-id"));
     expect(result.timestamp).toBe("2025-04-06T12:00:00Z");
     expect(result.severity).toBe("INFO");
   });

@@ -1,12 +1,63 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { spawn, type ChildProcess } from "child_process";
 import { createInterface } from "readline";
+import { z } from "zod";
+
+const MCPResponseSchema = z.object({
+  id: z.number().optional(),
+  result: z.unknown().optional(),
+  error: z.unknown().optional(),
+  jsonrpc: z.string(),
+});
+
+type MCPResponse = z.infer<typeof MCPResponseSchema>;
+
+// Schema for init response
+const InitResponseSchema = z.object({
+  serverInfo: z.object({
+    name: z.string(),
+    version: z.string(),
+  }),
+  capabilities: z.object({
+    tools: z.object({}).optional(),
+  }),
+  protocolVersion: z.string(),
+});
+
+// Schema for tools list response
+const ToolsListResponseSchema = z.object({
+  tools: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    inputSchema: z.object({
+      type: z.string(),
+      required: z.array(z.string()).optional(),
+      properties: z.record(z.unknown()).optional(),
+    }),
+  })),
+});
+
+// Schema for tool call response
+const ToolCallResponseSchema = z.object({
+  content: z.array(z.object({
+    type: z.string(),
+    text: z.string(),
+  })),
+  isError: z.boolean().optional(),
+});
+
+interface MCPRequest {
+  jsonrpc: string;
+  id?: number;
+  method: string;
+  params?: unknown;
+}
 
 describe("MCP Server E2E Tests", () => {
   let serverProcess: ChildProcess;
-  let sendRequest: (request: any) => void;
-  let waitForResponse: (id: number, timeout?: number) => Promise<any>;
-  const responses = new Map<number, any>();
+  let sendRequest: (request: MCPRequest) => void;
+  let waitForResponse: (id: number, timeout?: number) => Promise<MCPResponse>;
+  const responses = new Map<number, MCPResponse>();
 
   beforeAll(async () => {
     // Start the MCP server
@@ -14,17 +65,22 @@ describe("MCP Server E2E Tests", () => {
       env: { ...process.env, GOOGLE_CLOUD_PROJECT: "test-project" },
     });
 
+    if (!serverProcess.stdout) {
+      throw new Error("Server process stdout is not available");
+    }
+    
     const rl = createInterface({
-      input: serverProcess.stdout!,
+      input: serverProcess.stdout,
       terminal: false,
     });
 
     // Collect responses
     rl.on("line", (line) => {
       try {
-        const response = JSON.parse(line);
-        if (response.id !== undefined) {
-          responses.set(response.id, response);
+        const parsed: unknown = JSON.parse(line);
+        const parseResult = MCPResponseSchema.safeParse(parsed);
+        if (parseResult.success && parseResult.data.id !== undefined) {
+          responses.set(parseResult.data.id, parseResult.data);
         }
       } catch (e) {
         // Ignore non-JSON output
@@ -32,18 +88,26 @@ describe("MCP Server E2E Tests", () => {
     });
 
     // Helper to send requests
-    sendRequest = (request: any) => {
-      serverProcess.stdin!.write(JSON.stringify(request) + "\n");
+    sendRequest = (request: MCPRequest): void => {
+      if (!serverProcess.stdin) {
+        throw new Error("Server process stdin is not available");
+      }
+      serverProcess.stdin.write(JSON.stringify(request) + "\n");
     };
 
     // Helper to wait for response
-    waitForResponse = (id: number, timeout = 5000): Promise<any> => {
+    waitForResponse = (id: number, timeout = 5000): Promise<MCPResponse> => {
       return new Promise((resolve, reject) => {
         const startTime = Date.now();
         const checkInterval = setInterval(() => {
           if (responses.has(id)) {
             clearInterval(checkInterval);
-            resolve(responses.get(id));
+            const response = responses.get(id);
+            if (response) {
+              resolve(response);
+            } else {
+              reject(new Error(`Response ${id} not found`));
+            }
           } else if (Date.now() - startTime > timeout) {
             clearInterval(checkInterval);
             reject(new Error(`Timeout waiting for response with id ${id}`));
@@ -69,7 +133,11 @@ describe("MCP Server E2E Tests", () => {
 
     const initResponse = await waitForResponse(1);
     expect(initResponse.result).toBeDefined();
-    expect(initResponse.result.serverInfo.name).toBe("Google Cloud Logging MCP");
+    const initResult = InitResponseSchema.safeParse(initResponse.result);
+    if (!initResult.success) {
+      throw new Error(`Invalid init response: ${initResult.error.message}`);
+    }
+    expect(initResult.data.serverInfo.name).toBe("Google Cloud Logging MCP");
 
     // Send initialized notification
     sendRequest({
@@ -82,17 +150,25 @@ describe("MCP Server E2E Tests", () => {
   });
 
   afterAll(() => {
-    if (serverProcess) {
+    if (serverProcess !== undefined) {
       serverProcess.kill();
     }
   });
 
-  it("should return server capabilities on initialization", async () => {
+  it("should return server capabilities on initialization", () => {
     const initResponse = responses.get(1);
-    expect(initResponse.result.capabilities).toEqual({
+    expect(initResponse).toBeDefined();
+    if (!initResponse) {
+      throw new Error("Init response not found");
+    }
+    const initResult = InitResponseSchema.safeParse(initResponse.result);
+    if (!initResult.success) {
+      throw new Error(`Invalid init response: ${initResult.error.message}`);
+    }
+    expect(initResult.data.capabilities).toEqual({
       tools: {},
     });
-    expect(initResponse.result.protocolVersion).toBe("2024-11-05");
+    expect(initResult.data.protocolVersion).toBe("2024-11-05");
   });
 
   it("should list available tools", async () => {
@@ -105,18 +181,30 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(2);
     expect(response.result).toBeDefined();
-    expect(response.result.tools).toHaveLength(3);
+    const toolsResult = ToolsListResponseSchema.safeParse(response.result);
+    if (!toolsResult.success) {
+      throw new Error(`Invalid tools list response: ${toolsResult.error.message}`);
+    }
+    expect(toolsResult.data.tools).toHaveLength(3);
 
-    const toolNames = response.result.tools.map((t: any) => t.name);
+    const toolNames = toolsResult.data.tools.map((t) => t.name);
     expect(toolNames).toContain("queryLogs");
     expect(toolNames).toContain("getLogDetail");
     expect(toolNames).toContain("listProjects");
 
     // Check tool schemas
-    const queryLogsTool = response.result.tools.find((t: any) => t.name === "queryLogs");
+    const queryLogsTool = toolsResult.data.tools.find((t) => t.name === "queryLogs");
+    expect(queryLogsTool).toBeDefined();
+    expect(queryLogsTool).toBeDefined();
+    if (!queryLogsTool) {
+      throw new Error("queryLogs tool not found");
+    }
     expect(queryLogsTool.inputSchema.type).toBe("object");
     expect(queryLogsTool.inputSchema.required).toContain("filter");
-    expect(queryLogsTool.inputSchema.properties.filter.type).toBe("string");
+    const filterProp = queryLogsTool.inputSchema.properties?.filter;
+    if (typeof filterProp === 'object' && filterProp !== null && 'type' in filterProp) {
+      expect(filterProp.type).toBe("string");
+    }
   });
 
   it("should handle tools/call for listProjects", async () => {
@@ -134,14 +222,22 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(3);
     expect(response.result).toBeDefined();
-    expect(response.result.content).toBeDefined();
-    expect(Array.isArray(response.result.content)).toBe(true);
-    expect(response.result.content[0].type).toBe("text");
+    const callResult = ToolCallResponseSchema.safeParse(response.result);
+    if (!callResult.success) {
+      throw new Error(`Invalid tool call response: ${callResult.error.message}`);
+    }
+    expect(callResult.data.content).toBeDefined();
+    expect(Array.isArray(callResult.data.content)).toBe(true);
+    expect(callResult.data.content[0]?.type).toBe("text");
 
     // The response should be JSON containing projects data
-    const content = JSON.parse(response.result.content[0].text);
-    expect(content).toHaveProperty("projects");
-    expect(Array.isArray(content.projects)).toBe(true);
+    const firstContent = callResult.data.content[0];
+    expect(firstContent).toBeDefined();
+    const parsed: unknown = JSON.parse(firstContent?.text ?? '{}');
+    expect(parsed).toHaveProperty("projects");
+    if (typeof parsed === 'object' && parsed !== null && 'projects' in parsed) {
+      expect(Array.isArray(parsed.projects)).toBe(true);
+    }
   });
 
   it("should handle tools/call with missing required parameters", async () => {
@@ -160,9 +256,13 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(4);
     expect(response.result).toBeDefined();
-    expect(response.result.content).toBeDefined();
-    expect(response.result.content[0].type).toBe("text");
-    expect(response.result.content[0].text).toContain("Error");
+    const callResult = ToolCallResponseSchema.safeParse(response.result);
+    if (!callResult.success) {
+      throw new Error(`Invalid tool call response: ${callResult.error.message}`);
+    }
+    expect(callResult.data.content).toBeDefined();
+    expect(callResult.data.content[0]?.type).toBe("text");
+    expect(callResult.data.content[0]?.text).toContain("Invalid input");
   });
 
   it("should handle tools/call for unknown tool", async () => {
@@ -178,8 +278,12 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(5);
     expect(response.result).toBeDefined();
-    expect(response.result.isError).toBe(true);
-    expect(response.result.content[0].text).toContain("Unknown tool: unknownTool");
+    const callResult = ToolCallResponseSchema.safeParse(response.result);
+    if (!callResult.success) {
+      throw new Error(`Invalid tool call response: ${callResult.error.message}`);
+    }
+    expect(callResult.data.isError).toBe(true);
+    expect(callResult.data.content[0]?.text).toContain("Unknown tool: unknownTool");
   });
 
   it("should handle tools/call for queryLogs with valid parameters", async () => {
@@ -199,11 +303,15 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(6);
     expect(response.result).toBeDefined();
-    expect(response.result.content).toBeDefined();
-    expect(response.result.content[0].type).toBe("text");
+    const callResult = ToolCallResponseSchema.safeParse(response.result);
+    if (!callResult.success) {
+      throw new Error(`Invalid tool call response: ${callResult.error.message}`);
+    }
+    expect(callResult.data.content).toBeDefined();
+    expect(callResult.data.content[0]?.type).toBe("text");
     
     // Should return error or valid response depending on auth
-    const text = response.result.content[0].text;
+    const text = callResult.data.content[0]?.text;
     expect(text).toBeTruthy();
   });
 
@@ -223,13 +331,17 @@ describe("MCP Server E2E Tests", () => {
 
     const response = await waitForResponse(7);
     expect(response.result).toBeDefined();
-    expect(response.result.content).toBeDefined();
-    expect(response.result.content[0].type).toBe("text");
+    const callResult = ToolCallResponseSchema.safeParse(response.result);
+    if (!callResult.success) {
+      throw new Error(`Invalid tool call response: ${callResult.error.message}`);
+    }
+    expect(callResult.data.content).toBeDefined();
+    expect(callResult.data.content[0]?.type).toBe("text");
   });
 
   it("should handle concurrent tool calls", async () => {
     // Send multiple requests at once
-    const requests = [
+    const requests: MCPRequest[] = [
       {
         jsonrpc: "2.0",
         id: 10,
@@ -259,14 +371,14 @@ describe("MCP Server E2E Tests", () => {
     requests.forEach(sendRequest);
 
     // Wait for all responses
-    const responses = await Promise.all([
+    const responsePromises = await Promise.all([
       waitForResponse(10),
       waitForResponse(11),
       waitForResponse(12),
     ]);
 
     // All should have valid responses
-    responses.forEach((response) => {
+    responsePromises.forEach((response) => {
       expect(response.result).toBeDefined();
       expect(response.error).toBeUndefined();
     });

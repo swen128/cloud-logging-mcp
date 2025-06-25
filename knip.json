@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [],
+  "project": ["src/**/*.ts"],
+  "ignore": [],
+  "ignoreDependencies": [],
+  "ignoreExportsUsedInFile": false,
+  "ignoreBinaries": [],
+  "ignoreWorkspaces": [],
+  "bun": {
+    "entry": ["src/main.ts", "src/**/*.test.ts"]
+  }
+}

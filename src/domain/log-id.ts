@@ -1,12 +1,24 @@
 /**
- * Branded type for log IDs to prevent mixing with other string types
+ * LogId type - wraps string to provide type safety
  */
-export type LogId = string & { _brand: "LogId" };
+export interface LogId {
+  readonly value: string;
+  readonly _brand: "LogId";
+}
 
 /**
  * Create a LogId from a string
- * Uses a type-safe approach without type assertions
  */
 export function createLogId(id: string): LogId {
-  return id as LogId;
+  return {
+    value: id,
+    _brand: "LogId"
+  };
+}
+
+/**
+ * Get the string value from a LogId
+ */
+export function getLogIdValue(logId: LogId): string {
+  return logId.value;
 }

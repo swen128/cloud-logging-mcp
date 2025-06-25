@@ -7,7 +7,11 @@ import { listProjects } from "./listProjects";
 export const createTools = (dependencies: {
   api: CloudLoggingApi;
   cache: LogCache;
-}) => {
+}): {
+  queryLogs: ReturnType<typeof queryLogsTool>;
+  getLogDetail: ReturnType<typeof getLogDetailTool>;
+  listProjects: ReturnType<typeof listProjects>;
+} => {
   return {
     queryLogs: queryLogsTool(dependencies),
     getLogDetail: getLogDetailTool(dependencies),

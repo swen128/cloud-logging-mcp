@@ -18,7 +18,7 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
   }
 
   async getDefaultProjectId(): Promise<string | undefined> {
-    if (this.defaultProjectId) {
+    if (this.defaultProjectId !== undefined && this.defaultProjectId !== '') {
       return this.defaultProjectId;
     }
     
@@ -42,48 +42,64 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
     >
   > {
     try {
-      const request: any = {
+      interface GetEntriesRequest {
+        projectIds: string[];
+        filter: string;
+        pageSize: number;
+        pageToken?: string;
+        orderBy: string;
+        resourceNames?: string[];
+      }
+
+      const request: GetEntriesRequest = {
         projectIds: [params.projectId],
         filter: params.filter,
-        pageSize: params.pageSize || 100,
+        pageSize: params.pageSize ?? 100,
         pageToken: params.pageToken,
-        orderBy: params.orderBy ? `timestamp ${params.orderBy.timestamp}` : "timestamp desc",
+        orderBy: params.orderBy !== undefined ? `timestamp ${params.orderBy.timestamp}` : "timestamp desc",
       };
 
-      if (params.resourceNames) {
+      if (params.resourceNames !== undefined && params.resourceNames.length > 0) {
         request.resourceNames = params.resourceNames;
       }
 
-      const [entries, , response] = await this.logging.getEntries(request);
+      const getEntriesResult = await this.logging.getEntries(request);
+      const entries = getEntriesResult[0];
+      const response = getEntriesResult[2];
 
       const rawEntries: RawLogEntry[] = entries.map((entry) => {
-        const metadata = entry.metadata || {};
-        const data = entry.data || {};
+        const metadata: Record<string, unknown> = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
+        const data: unknown = entry.data;
 
-        let timestamp: string;
-        if (metadata.timestamp) {
-          if (typeof metadata.timestamp === 'string') {
-            timestamp = metadata.timestamp;
-          } else if (metadata.timestamp instanceof Date) {
-            timestamp = metadata.timestamp.toISOString();
-          } else if (typeof metadata.timestamp === 'object' && 'seconds' in metadata.timestamp) {
-            // Handle Google protobuf Timestamp
-            const seconds = (metadata.timestamp as any).seconds;
-            timestamp = new Date(Number(seconds) * 1000).toISOString();
+        const timestamp = ((): string => {
+          if (metadata.timestamp !== undefined && metadata.timestamp !== null) {
+            if (typeof metadata.timestamp === 'string') {
+              return metadata.timestamp;
+            } else if (metadata.timestamp instanceof Date) {
+              return metadata.timestamp.toISOString();
+            } else if (typeof metadata.timestamp === 'object' && 'seconds' in metadata.timestamp) {
+              // Handle Google protobuf Timestamp
+              const timestampObj = metadata.timestamp;
+              const seconds = 'seconds' in timestampObj ? timestampObj.seconds : undefined;
+              if (seconds !== undefined) {
+                return new Date(Number(seconds) * 1000).toISOString();
+              }
+              return new Date().toISOString();
+            } else {
+              return new Date().toISOString();
+            }
           } else {
-            timestamp = new Date().toISOString();
+            return new Date().toISOString();
           }
-        } else {
-          timestamp = new Date().toISOString();
-        }
+        })()
 
         return {
-          insertId: createLogId(metadata.insertId || ""),
+          insertId: createLogId(typeof metadata.insertId === 'string' ? metadata.insertId : ""),
           timestamp,
-          severity: (metadata.severity || "DEFAULT") as LogSeverity,
-          jsonPayload: typeof data === "object" && !Buffer.isBuffer(data) ? data : undefined,
+          severity: this.mapSeverity(metadata.severity),
+          jsonPayload: typeof data === "object" && data !== null && !Buffer.isBuffer(data) ? this.cloneObject(data) : undefined,
           textPayload: typeof data === "string" ? data : Buffer.isBuffer(data) ? data.toString() : undefined,
-          protoPayload: metadata.protoPayload ? (metadata.protoPayload as Record<string, unknown>) : undefined,
+          protoPayload: this.convertProtoPayload(metadata.protoPayload),
           labels: metadata.labels,
           resource: metadata.resource,
           httpRequest: metadata.httpRequest,
@@ -97,14 +113,83 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
 
       return ok({
         entries: rawEntries,
-        nextPageToken: response?.nextPageToken || undefined,
+        nextPageToken: response?.nextPageToken ?? undefined,
       });
-    } catch (error: any) {
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : { message: String(error) };
       const cloudError: CloudLoggingError = {
-        message: error.message || "Unknown error occurred",
-        code: this.mapErrorCode(error.code),
+        message: errorObj.message ?? "Unknown error occurred",
+        code: this.mapErrorCode('code' in errorObj && typeof errorObj.code === 'number' ? errorObj.code : undefined),
       };
       return err(cloudError);
+    }
+  }
+
+  private mapSeverity(severity: unknown): LogSeverity {
+    if (typeof severity !== 'string') {
+      return "DEFAULT";
+    }
+    
+    switch (severity) {
+      case "DEFAULT":
+      case "DEBUG":
+      case "INFO":
+      case "NOTICE":
+      case "WARNING":
+      case "ERROR":
+      case "CRITICAL":
+      case "ALERT":
+      case "EMERGENCY":
+        return severity;
+      default:
+        return "DEFAULT";
+    }
+  }
+
+  private convertProtoPayload(payload: unknown): Record<string, unknown> | undefined {
+    if (payload === null || payload === undefined) {
+      return undefined;
+    }
+    
+    if (typeof payload === 'object') {
+      // Convert protobuf object to plain object
+      return this.cloneObject(payload);
+    }
+    
+    return undefined;
+  }
+
+  private cloneObject(obj: unknown): Record<string, unknown> | undefined {
+    if (typeof obj !== 'object' || obj === null) {
+      return undefined;
+    }
+    const str = JSON.stringify(obj);
+    const parsed: unknown = JSON.parse(str);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      // Create a new object to ensure proper typing
+      const result: Record<string, unknown> = {};
+      for (const key in parsed) {
+        if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+          result[key] = Object.getOwnPropertyDescriptor(parsed, key)?.value;
+        }
+      }
+      return result;
+    }
+    return undefined;
+  }
+
+  private mapProjectState(state: unknown): Project["state"] {
+    if (typeof state !== 'string') {
+      return "ACTIVE";
+    }
+    
+    switch (state) {
+      case "ACTIVE":
+      case "DELETE_REQUESTED":
+      case "DELETE_IN_PROGRESS":
+        return state;
+      default:
+        return "ACTIVE";
     }
   }
 
@@ -136,20 +221,21 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
       });
 
       const mappedProjects: Project[] = projects.map((project) => ({
-        projectId: project.projectId || "",
-        name: project.name || "",
-        displayName: project.displayName || undefined,
-        state: project.state as Project["state"] || "ACTIVE",
+        projectId: project.projectId ?? "",
+        name: project.name ?? "",
+        displayName: project.displayName ?? undefined,
+        state: this.mapProjectState(project.state),
         createTime: typeof project.createTime === 'string' ? project.createTime : new Date().toISOString(),
         updateTime: typeof project.updateTime === 'string' ? project.updateTime : undefined,
       }));
 
       return {
         projects: mappedProjects,
-        nextPageToken: response?.nextPageToken || undefined,
+        nextPageToken: response?.nextPageToken ?? undefined,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to list projects: ${error.message}`);
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : { message: String(error) };
+      throw new Error(`Failed to list projects: ${errorObj.message ?? 'Unknown error'}`);
     }
   }
 }

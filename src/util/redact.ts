@@ -18,14 +18,13 @@ const SENSITIVE_PATTERNS = [
  * @returns Redacted text
  */
 export function redactSensitiveInfo(text: string): string {
-  if (!text) return text;
+  if (text === '') return text;
 
-  let redactedText = text;
-  for (const pattern of SENSITIVE_PATTERNS) {
-    redactedText = redactedText.replace(pattern, (match) => {
+  const redactedText = SENSITIVE_PATTERNS.reduce((currentText, pattern) => {
+    return currentText.replace(pattern, (match) => {
       if (pattern.toString().includes("key|api")) {
         // For API keys, preserve first and last 4 chars
-        return match.replace(/(['"])[^'"]+(['"])/g, (m, p1, p2) => {
+        return match.replace(/(['"'])[^'"']+(['"'])/g, (m: string, p1: string, p2: string) => {
           const value = m.substring(p1.length, m.length - p2.length);
           if (value.length <= 8) return `${p1}${"*".repeat(value.length)}${p2}`;
           return `${p1}${value.substring(0, 4)}${"*".repeat(value.length - 8)}${value.substring(value.length - 4)}${p2}`;
@@ -33,7 +32,7 @@ export function redactSensitiveInfo(text: string): string {
       }
       return "*".repeat(match.length);
     });
-  }
+  }, text);
 
   return redactedText;
 }

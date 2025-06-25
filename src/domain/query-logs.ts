@@ -1,12 +1,13 @@
 import { type Result, err, ok } from "neverthrow";
 import type { CloudLoggingApi, CloudLoggingError, RawLogEntry, CloudLoggingQuery } from "./api";
 import type { LogCache } from "./cache";
+import { getLogIdValue } from "./log-id";
 import { summarize } from "./log-entry";
 
 /**
  * Output type for the queryLogs function
  */
-export type QueryLogsResult = {
+type QueryLogsResult = {
   logs: Array<{
     id: string;
     summary: string;
@@ -39,14 +40,12 @@ export const queryLogs =
 
     // Cache each log entry
     for (const entry of entries) {
-      if (entry.insertId) {
-        cache.add(entry.insertId, entry);
-      }
+      cache.add(entry.insertId, entry);
     }
 
     // Transform entries to the expected output format
     const logs = entries.map((entry: RawLogEntry) => ({
-      id: entry.insertId,
+      id: getLogIdValue(entry.insertId),
       summary: summarize(entry, input.summaryFields).summary,
     }));
 
