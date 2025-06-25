@@ -33,9 +33,7 @@
     "@google-cloud/logging": "^11.2.0",
     "@google-cloud/resource-manager": "^6.1.0",
     "@modelcontextprotocol/sdk": "^1.13.1",
-    "@types/ramda": "^0.30.2",
     "neverthrow": "^8.2.0",
-    "ramda": "^0.31.3",
     "zod": "^3.25.67"
   },
   "devDependencies": {
