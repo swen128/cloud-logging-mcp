@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { CloudLoggingApi } from "../domain/api";
 import type { LogCache } from "../domain/cache";
-import { queryLogs } from "../domain/query-logs";
+import { createQueryLogsOutput } from "../domain/query-logs";
 
 const inputSchema = z.object({
   projectId: z.string().optional().describe("Google Cloud project ID. If not provided, uses the default project from gcloud config"),
@@ -53,26 +53,45 @@ export const queryLogsTool = (dependencies: {
         };
       }
 
-      const result = await queryLogs(dependencies)({ ...input, projectId });
+      // Call the Cloud Logging API to get entries
+      const result = await dependencies.api.entries({
+        projectId,
+        filter: input.filter,
+        resourceNames: input.resourceNames,
+        pageSize: input.pageSize,
+        pageToken: input.pageToken,
+        orderBy: input.orderBy,
+      });
 
-      return result.match(
-        (data) => ({
+      if (result.isErr()) {
+        return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify(data, null, 2),
+              text: `Error querying logs: ${result.error.message}`,
             },
           ],
-        }),
-        (error) => ({
-          content: [
-            {
-              type: "text" as const,
-              text: `Error querying logs: ${error.message}`,
-            },
-          ],
-        }),
-      );
+        };
+      }
+
+      const { entries, nextPageToken } = result.value;
+
+      // Cache each log entry
+      for (const entry of entries) {
+        dependencies.cache.add(entry.insertId, entry);
+      }
+
+      // Transform entries to the expected output format
+      const output = createQueryLogsOutput(entries, nextPageToken, input.summaryFields);
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(output, null, 2),
+          },
+        ],
+      };
     },
   };
 };

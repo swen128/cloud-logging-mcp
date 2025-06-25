@@ -1,57 +1,36 @@
-import { type Result, err, ok } from "neverthrow";
-import type { CloudLoggingApi, CloudLoggingError, RawLogEntry, CloudLoggingQuery } from "./api";
-import type { LogCache } from "./cache";
+import type { RawLogEntry } from "./api";
 import { getLogIdValue } from "./log-id";
 import { summarize } from "./log-entry";
 
-/**
- * Output type for the queryLogs function
- */
-type QueryLogsResult = {
-  logs: Array<{
-    id: string;
-    summary: string;
-  }>;
+interface LogSummary {
+  id: string;
+  summary: string;
+}
+
+export function transformLogEntries(
+  entries: RawLogEntry[],
+  summaryFields?: string[]
+): LogSummary[] {
+  return entries.map((entry) => ({
+    id: getLogIdValue(entry.insertId),
+    summary: summarize(entry, summaryFields).summary,
+  }));
+}
+
+interface QueryLogsOutput {
+  logs: LogSummary[];
   pageSize: number;
   nextPageToken?: string;
-};
+}
 
-/**
- * Query logs from Cloud Logging
- * @param dependencies The dependencies (api and cache)
- * @returns A function that takes input parameters and returns a Result with logs and pagination info
- */
-export const queryLogs =
-  (dependencies: {
-    api: CloudLoggingApi;
-    cache: LogCache;
-  }) =>
-  async (input: CloudLoggingQuery): Promise<Result<QueryLogsResult, CloudLoggingError>> => {
-    const { api, cache } = dependencies;
-
-    // Call the Cloud Logging API to get entries
-    const result = await api.entries(input);
-
-    if (result.isErr()) {
-      return err(result.error);
-    }
-
-    const { entries, nextPageToken } = result.value;
-
-    // Cache each log entry
-    for (const entry of entries) {
-      cache.add(entry.insertId, entry);
-    }
-
-    // Transform entries to the expected output format
-    const logs = entries.map((entry: RawLogEntry) => ({
-      id: getLogIdValue(entry.insertId),
-      summary: summarize(entry, input.summaryFields).summary,
-    }));
-
-    return ok({
-      logs,
-      pageSize: entries.length,
-      nextPageToken,
-    });
+export function createQueryLogsOutput(
+  entries: RawLogEntry[],
+  nextPageToken: string | undefined,
+  summaryFields?: string[]
+): QueryLogsOutput {
+  return {
+    logs: transformLogEntries(entries, summaryFields),
+    pageSize: entries.length,
+    nextPageToken,
   };
+}
