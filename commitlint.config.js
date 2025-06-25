@@ -40,7 +40,8 @@ export default {
             errors.push('Missing "# Background" section');
           }
           
-          if (!hasCoAuthored) {
+          // Only check for Co-authored-by when CLAUDECODE=1
+          if (process.env.CLAUDECODE === '1' && !hasCoAuthored) {
             errors.push('Missing "Co-authored-by:" or "Co-Authored-By:" line');
           }
           
