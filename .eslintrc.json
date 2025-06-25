@@ -12,7 +12,8 @@
   "plugins": ["@typescript-eslint"],
   "rules": {
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["error"]
+    "@typescript-eslint/no-unused-vars": ["error"],
+    "arrow-body-style": ["error", "as-needed"]
   },
   "ignorePatterns": ["dist/", "node_modules/"]
 }

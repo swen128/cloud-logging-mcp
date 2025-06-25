@@ -58,11 +58,11 @@ const viewPath = (pathStr: string, obj: unknown): unknown => {
     return descriptor?.value;
   };
   
-  const result = parts.reduce<unknown>((current, part) => {
-    return (typeof current === 'object' && current !== null && part in current)
+  const result = parts.reduce<unknown>((current, part) => 
+    (typeof current === 'object' && current !== null && part in current)
       ? getProperty(current, part)
-      : undefined;
-  }, obj);
+      : undefined
+  , obj);
   
   return result;
 };

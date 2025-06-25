@@ -20,16 +20,15 @@ const SENSITIVE_PATTERNS = [
 export function redactSensitiveInfo(text: string): string {
   return text === '' 
     ? text
-    : SENSITIVE_PATTERNS.reduce((currentText, pattern) => {
-        return currentText.replace(pattern, (match) => {
-          return pattern.toString().includes("key|api")
+    : SENSITIVE_PATTERNS.reduce((currentText, pattern) => 
+        currentText.replace(pattern, (match) => 
+          pattern.toString().includes("key|api")
             ? match.replace(/(['"'])[^'"']+(['"'])/g, (m: string, p1: string, p2: string) => {
                 const value = m.substring(p1.length, m.length - p2.length);
                 return value.length <= 8
                   ? `${p1}${"*".repeat(value.length)}${p2}`
                   : `${p1}${value.substring(0, 4)}${"*".repeat(value.length - 8)}${value.substring(value.length - 4)}${p2}`;
               })
-            : "*".repeat(match.length);
-        });
-      }, text);
+            : "*".repeat(match.length)
+        ), text);
 }
