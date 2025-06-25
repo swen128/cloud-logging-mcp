@@ -14,8 +14,8 @@
     "format": "prettier --write src",
     "typecheck": "tsgo --noEmit",
     "knip": "knip",
-    "check": "bun run typecheck && bun run lint && bun run test && bun run knip",
-    "check:all": "bun run typecheck && bun run lint && bun run test:all && bun run knip",
+    "check": "concurrently -c auto -g --kill-others-on-fail \"bun run typecheck\" \"bun run lint\" \"bun run test\" \"bun run knip\"",
+    "check:all": "concurrently -c auto -g --kill-others-on-fail \"bun run typecheck\" \"bun run lint\" \"bun run test:all\" \"bun run knip\"",
     "build": "bun build src/main.ts --target node --outdir dist",
     "prepare": "husky"
   },
@@ -48,6 +48,7 @@
     "@typescript-eslint/parser": "^8.35.0",
     "@typescript/native-preview": "^7.0.0-dev.20250625.1",
     "bun-types": "^1.2.17",
+    "concurrently": "^9.2.0",
     "eslint": "^9.29.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-functional": "^9.0.2",
