@@ -53,7 +53,10 @@ interface MCPRequest {
   params?: unknown;
 }
 
-describe("MCP Server E2E Tests", () => {
+// Skip e2e tests unless RUN_E2E is set
+const skipE2E = process.env.RUN_E2E !== '1';
+
+describe.skipIf(skipE2E)("MCP Server E2E Tests", () => {
   let serverProcess: ChildProcess;
   let sendRequest: (request: MCPRequest) => void;
   let waitForResponse: (id: number, timeout?: number) => Promise<MCPResponse>;
