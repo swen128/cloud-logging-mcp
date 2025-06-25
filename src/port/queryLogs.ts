@@ -4,7 +4,7 @@ import type { LogCache } from "../domain/cache";
 import { createQueryLogsOutput } from "../domain/query-logs";
 
 const inputSchema = z.object({
-  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, uses the default project from gcloud config"),
+  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, attempts to detect from Application Default Credentials"),
   filter: z.string(),
   resourceNames: z
     .array(
@@ -47,7 +47,7 @@ export const queryLogsTool = (dependencies: {
           content: [
             {
               type: "text" as const,
-              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you're authenticated with gcloud.",
+              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you have Application Default Credentials configured.",
             },
           ],
         };

@@ -43,10 +43,11 @@ This is a Model Context Protocol (MCP) server for Google Cloud Logging following
 
 ## Working with Google Cloud APIs
 
-Authentication methods (in order of preference):
+Authentication methods:
 1. Application Default Credentials: `gcloud auth application-default login`
 2. Service Account: `export GOOGLE_APPLICATION_CREDENTIALS="path/to/key.json"`
-3. Project ID: `export GOOGLE_CLOUD_PROJECT="project-id"`
+
+Project ID must be explicitly provided in tool calls or will be auto-detected from authenticated credentials.
 
 The API client handles various timestamp formats from Google Cloud:
 - ISO strings

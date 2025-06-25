@@ -10,7 +10,7 @@ import {
 } from "../domain/get-log-detail";
 
 const inputSchema = z.object({
-  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, uses the default project from gcloud config"),
+  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, attempts to detect from Application Default Credentials"),
   logId: z.string(),
 });
 
@@ -32,7 +32,7 @@ export const getLogDetailTool = (dependencies: {
           content: [
             {
               type: "text" as const,
-              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you're authenticated with gcloud.",
+              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you have Application Default Credentials configured.",
             },
           ],
         };

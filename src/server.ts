@@ -9,7 +9,7 @@ export const createServer = (): McpServer => {
     version: "1.0.0",
   });
 
-  const api = new GoogleCloudLoggingApiClient(process.env.GOOGLE_CLOUD_PROJECT);
+  const api = new GoogleCloudLoggingApiClient();
   const cache = new LogCacheImpl();
   const tools = createTools({ api, cache });
 

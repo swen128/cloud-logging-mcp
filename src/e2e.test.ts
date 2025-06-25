@@ -64,9 +64,7 @@ describe.skipIf(skipE2E)("MCP Server E2E Tests", () => {
 
   beforeAll(async () => {
     // Start the MCP server
-    serverProcess = spawn("bun", ["run", "src/main.ts"], {
-      env: { ...process.env, GOOGLE_CLOUD_PROJECT: "test-project" },
-    });
+    serverProcess = spawn("bun", ["run", "src/main.ts"]);
 
     if (!serverProcess.stdout) {
       throw new Error("Server process stdout is not available");

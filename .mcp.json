@@ -2,10 +2,7 @@
   "mcpServers": {
     "cloud-logging": {
       "command": "bun",
-      "args": ["run", "/Users/yuto_ogino/programs-personal/cloud-logging-mcp/src/main.ts"],
-      "env": {
-        "GOOGLE_CLOUD_PROJECT": "dinii-self-develop"
-      }
+      "args": ["run", "/Users/yuto_ogino/programs-personal/cloud-logging-mcp/src/main.ts"]
     }
   }
 }
