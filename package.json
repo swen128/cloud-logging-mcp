@@ -1,0 +1,46 @@
+{
+  "name": "cloud-logging-mcp",
+  "version": "1.0.0",
+  "description": "Google Cloud Logging MCP Server - A Model Context Protocol server for accessing Google Cloud logs",
+  "main": "src/main.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "dev": "bun run --watch src/main.ts",
+    "test": "bun test",
+    "test:e2e": "bun test src/e2e.test.ts",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/main.ts --target node --outdir dist"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-cloud",
+    "cloud-logging",
+    "ai",
+    "bun"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google-cloud/logging": "^11.2.0",
+    "@google-cloud/resource-manager": "^6.1.0",
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@types/ramda": "^0.30.2",
+    "neverthrow": "^6.1.0",
+    "ramda": "^0.30.1",
+    "zod-to-json-schema": "^3.24.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20250625.1",
+    "bun-types": "^1.2.4",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  }
+}
