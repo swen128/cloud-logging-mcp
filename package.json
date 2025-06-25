@@ -30,29 +30,29 @@
   "dependencies": {
     "@google-cloud/logging": "^11.2.0",
     "@google-cloud/resource-manager": "^6.1.0",
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.13.1",
     "@types/ramda": "^0.30.2",
-    "neverthrow": "^6.1.0",
-    "ramda": "^0.30.1",
-    "zod": "^3.23.8",
+    "neverthrow": "^8.2.0",
+    "ramda": "^0.31.3",
+    "zod": "^3.25.67",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.29.0",
-    "@types/node": "^20.11.24",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@types/node": "^24.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
     "@typescript/native-preview": "^7.0.0-dev.20250625.1",
-    "bun-types": "^1.2.4",
-    "eslint": "^8.57.0",
+    "bun-types": "^1.2.17",
+    "eslint": "^9.29.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-functional": "^9.0.2",
     "eslint-plugin-unicorn": "^59.0.1",
     "husky": "^9.1.7",
     "knip": "^5.61.2",
-    "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
+    "prettier": "^3.6.1",
+    "typescript": "^5.8.3"
   }
 }

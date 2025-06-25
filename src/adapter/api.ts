@@ -207,6 +207,8 @@ export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
         return "UNAVAILABLE";
       case 16:
         return "UNAUTHENTICATED";
+      case undefined:
+        return "INTERNAL";
       default:
         return "INTERNAL";
     }
