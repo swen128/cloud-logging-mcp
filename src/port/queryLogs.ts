@@ -2,11 +2,14 @@ import { z } from "zod";
 import type { CloudLoggingApi } from "../domain/api";
 import type { LogCache } from "../domain/cache";
 import { createQueryLogsOutput } from "../domain/query-logs";
+import { buildTimestampFilter, combineFilters, validateTimeRange } from "../domain/time-range";
 import type { Tool } from "./types";
 
-const inputSchema = z.object({
+export const queryLogsInputSchema = z.object({
   projectId: z.string().describe("Google Cloud project ID"),
   filter: z.string(),
+  startTime: z.string().optional().describe("Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')"),
+  endTime: z.string().optional().describe("End time in ISO 8601 format (e.g., '2024-01-01T23:59:59Z')"),
   resourceNames: z
     .array(
       z.string({
@@ -30,28 +33,36 @@ const inputSchema = z.object({
     .optional(),
 });
 
-type QueryLogsInput = z.infer<typeof inputSchema>;
+type QueryLogsInput = z.infer<typeof queryLogsInputSchema>;
 
 export const queryLogsTool = (dependencies: {
   api: CloudLoggingApi;
   cache: LogCache;
-}): Tool<typeof inputSchema> => {
+}): Tool<typeof queryLogsInputSchema> => {
   return {
     name: "queryLogs",
-    description: "Returns a list of log summaries based on the given query",
-    inputSchema: inputSchema,
+    description: "Query Google Cloud logs with optional time range. Time filters: use startTime/endTime with ISO 8601 format (e.g., '2024-01-01T00:00:00Z'). Filters are combined with AND.",
+    inputSchema: queryLogsInputSchema,
     handler: async ({ input }: { input: QueryLogsInput }): Promise<{ content: Array<{ type: "text"; text: string }> }> => {
       const projectId = input.projectId;
 
-      // Call the Cloud Logging API to get entries
-      const result = await dependencies.api.entries({
-        projectId,
-        filter: input.filter,
-        resourceNames: input.resourceNames,
-        pageSize: input.pageSize,
-        pageToken: input.pageToken,
-        orderBy: input.orderBy,
-      });
+      try {
+        // Validate time range if provided
+        validateTimeRange(input.startTime, input.endTime);
+
+        // Build timestamp filter and combine with existing filter
+        const timestampFilter = buildTimestampFilter(input.startTime, input.endTime);
+        const combinedFilter = combineFilters(input.filter, timestampFilter);
+
+        // Call the Cloud Logging API to get entries
+        const result = await dependencies.api.entries({
+          projectId,
+          filter: combinedFilter,
+          resourceNames: input.resourceNames,
+          pageSize: input.pageSize,
+          pageToken: input.pageToken,
+          orderBy: input.orderBy,
+        });
 
       if (result.isErr()) {
         return {
@@ -82,6 +93,16 @@ export const queryLogsTool = (dependencies: {
           },
         ],
       };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
     },
   };
 };
