@@ -8,9 +8,10 @@ import {
   formatError,
   formatNotFoundError,
 } from "../domain/get-log-detail";
+import type { Tool } from "./types";
 
 const inputSchema = z.object({
-  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, attempts to detect from Application Default Credentials"),
+  projectId: z.string().describe("Google Cloud project ID"),
   logId: z.string(),
 });
 
@@ -25,18 +26,7 @@ export const getLogDetailTool = (dependencies: {
     description: "Returns the whole record of a log with the given ID",
     inputSchema: inputSchema,
     handler: async ({ input }: { input: GetLogDetailInput }): Promise<{ content: Array<{ type: "text"; text: string }> }> => {
-      const projectId = input.projectId ?? await dependencies.api.getDefaultProjectId();
-      
-      if (projectId === undefined || projectId === '') {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you have Application Default Credentials configured.",
-            },
-          ],
-        };
-      }
+      const projectId = input.projectId;
 
       // First check cache
       const logIdTyped = createLogId(input.logId);
@@ -111,10 +101,3 @@ export const getLogDetailTool = (dependencies: {
   };
 };
 
-// TODO: This type is shared between the tools. Consider moving it to a common location.
-type Tool<InputSchema extends z.ZodTypeAny> = {
-  name: string;
-  description: string;
-  inputSchema: InputSchema;
-  handler: (args: { input: z.infer<InputSchema> }) => Promise<{ content: Array<{ type: "text"; text: string }> }>;
-};

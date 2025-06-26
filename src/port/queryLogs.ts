@@ -2,9 +2,10 @@ import { z } from "zod";
 import type { CloudLoggingApi } from "../domain/api";
 import type { LogCache } from "../domain/cache";
 import { createQueryLogsOutput } from "../domain/query-logs";
+import type { Tool } from "./types";
 
 const inputSchema = z.object({
-  projectId: z.string().optional().describe("Google Cloud project ID. If not provided, attempts to detect from Application Default Credentials"),
+  projectId: z.string().describe("Google Cloud project ID"),
   filter: z.string(),
   resourceNames: z
     .array(
@@ -40,18 +41,7 @@ export const queryLogsTool = (dependencies: {
     description: "Returns a list of log summaries based on the given query",
     inputSchema: inputSchema,
     handler: async ({ input }: { input: QueryLogsInput }): Promise<{ content: Array<{ type: "text"; text: string }> }> => {
-      const projectId = input.projectId ?? await dependencies.api.getDefaultProjectId();
-      
-      if (projectId === undefined || projectId === '') {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "Error: No project ID provided and unable to detect default project. Please specify a project ID or ensure you have Application Default Credentials configured.",
-            },
-          ],
-        };
-      }
+      const projectId = input.projectId;
 
       // Call the Cloud Logging API to get entries
       const result = await dependencies.api.entries({
@@ -96,10 +86,3 @@ export const queryLogsTool = (dependencies: {
   };
 };
 
-// TODO: This type is shared between the tools. Consider moving it to a common location.
-type Tool<InputSchema extends z.ZodTypeAny> = {
-  name: string;
-  description: string;
-  inputSchema: InputSchema;
-  handler: (args: { input: z.infer<InputSchema> }) => Promise<{ content: Array<{ type: "text"; text: string }> }>;
-};

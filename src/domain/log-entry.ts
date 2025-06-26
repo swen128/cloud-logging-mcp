@@ -67,16 +67,18 @@ const viewPath = (pathStr: string, obj: unknown): unknown => {
   return result;
 };
 
-const extractSummaryWithoutFields = (entry: RawLogEntry): string =>
-  truncate(
+const extractSummaryWithoutFields = (entry: RawLogEntry): string => {
+  const rawSummary = 
     getTextPayload(entry) ??
-      getJsonMessage(entry) ??
-      getProtoMessage(entry) ??
-      getNestedJsonMessage(entry) ??
-      stringifyProtoPayload(entry) ??
-      stringifyJsonPayload(entry) ??
-      "",
-  );
+    getJsonMessage(entry) ??
+    getProtoMessage(entry) ??
+    getNestedJsonMessage(entry) ??
+    stringifyProtoPayload(entry) ??
+    stringifyJsonPayload(entry) ??
+    "";
+  
+  return truncate(redactSensitiveInfo(rawSummary));
+};
 
 const findMessage = (obj: unknown): string | undefined => {
   if (typeof obj !== 'object' || obj === null) return undefined;

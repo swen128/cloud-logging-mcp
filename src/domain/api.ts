@@ -27,12 +27,6 @@ export interface CloudLoggingApi {
    * @returns Promise with list of projects or error
    */
   listProjects(params: ListProjectsInput): Promise<ListProjectsOutput>;
-
-  /**
-   * Gets the default project ID from environment or gcloud config
-   * @returns Promise with project ID or undefined
-   */
-  getDefaultProjectId(): Promise<string | undefined>;
 }
 
 export interface CloudLoggingQuery {

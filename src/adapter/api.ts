@@ -9,27 +9,10 @@ import { createLogId } from "../domain/log-id";
 export class GoogleCloudLoggingApiClient implements CloudLoggingApi {
   private logging: Logging;
   private projectsClient: ProjectsClient;
-  private defaultProjectId?: string;
 
-  constructor(projectId?: string) {
-    this.logging = new Logging({ projectId });
+  constructor() {
+    this.logging = new Logging();
     this.projectsClient = new ProjectsClient();
-    this.defaultProjectId = projectId;
-  }
-
-  async getDefaultProjectId(): Promise<string | undefined> {
-    return (this.defaultProjectId !== undefined && this.defaultProjectId !== '')
-      ? this.defaultProjectId
-      : await (async (): Promise<string | undefined> => {
-          // Try to get from the Logging client's detected project
-          try {
-            const detectedProjectId = await this.logging.auth.getProjectId();
-            this.defaultProjectId = detectedProjectId;
-            return detectedProjectId;
-          } catch {
-            return undefined;
-          }
-        })();
   }
 
   async entries(params: CloudLoggingQuery): Promise<

@@ -66,7 +66,59 @@ describe("summarize", () => {
       expect(summarize(entry).summary).toContain('"httpRequest":{"status":200}');
     });
 
-    // TODO: Test redaction of sensitive info
+    it("should redact API keys in textPayload", () => {
+      const entry = mockEntry({
+        textPayload: 'The API key is: api_key="sk-1234567890abcdef"',
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("sk-1234567890abcdef");
+      expect(result.summary).toContain("api_key=");
+    });
+
+    it("should redact email addresses in jsonPayload", () => {
+      const entry = mockEntry({
+        jsonPayload: { 
+          message: "User email is john.doe@example.com",
+          userEmail: "jane.smith@company.org"
+        },
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("john.doe@example.com");
+      expect(result.summary).not.toContain("jane.smith@company.org");
+      expect(result.summary).toContain("****");
+    });
+
+    it("should redact credit card numbers", () => {
+      const entry = mockEntry({
+        textPayload: "Payment processed for card 1234-5678-9012-3456",
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("1234-5678-9012-3456");
+      expect(result.summary).toContain("****");
+    });
+
+    it("should redact IP addresses", () => {
+      const entry = mockEntry({
+        jsonPayload: { 
+          message: "Request from IP 192.168.1.100",
+          clientIp: "10.0.0.50"
+        },
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("192.168.1.100");
+      expect(result.summary).not.toContain("10.0.0.50");
+    });
+
+    it("should redact multiple sensitive items in same payload", () => {
+      const entry = mockEntry({
+        textPayload: 'API key="secret123", email: admin@example.com, IP: 192.168.1.1',
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("secret123");
+      expect(result.summary).not.toContain("admin@example.com");
+      expect(result.summary).not.toContain("192.168.1.1");
+      expect(result.summary).toContain("key=");
+    });
   });
 
   describe("summary extraction with summaryFields", () => {
@@ -123,6 +175,105 @@ describe("summarize", () => {
       expect(summarize(entry, undefined).summary).toBe("Default summary");
     });
 
-    // TODO: Test redaction of sensitive info
+    it("should redact API keys in textPayload", () => {
+      const entry = mockEntry({
+        textPayload: 'The API key is: api_key="sk-1234567890abcdef"',
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("sk-1234567890abcdef");
+      expect(result.summary).toContain("api_key=");
+    });
+
+    it("should redact email addresses in jsonPayload", () => {
+      const entry = mockEntry({
+        jsonPayload: { 
+          message: "User email is john.doe@example.com",
+          userEmail: "jane.smith@company.org"
+        },
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("john.doe@example.com");
+      expect(result.summary).not.toContain("jane.smith@company.org");
+      expect(result.summary).toContain("****");
+    });
+
+    it("should redact credit card numbers", () => {
+      const entry = mockEntry({
+        textPayload: "Payment processed for card 1234-5678-9012-3456",
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("1234-5678-9012-3456");
+      expect(result.summary).toContain("****");
+    });
+
+    it("should redact IP addresses", () => {
+      const entry = mockEntry({
+        jsonPayload: { 
+          message: "Request from IP 192.168.1.100",
+          clientIp: "10.0.0.50"
+        },
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("192.168.1.100");
+      expect(result.summary).not.toContain("10.0.0.50");
+    });
+
+    it("should redact multiple sensitive items in same payload", () => {
+      const entry = mockEntry({
+        textPayload: 'API key="secret123", email: admin@example.com, IP: 192.168.1.1',
+      });
+      const result = summarize(entry);
+      expect(result.summary).not.toContain("secret123");
+      expect(result.summary).not.toContain("admin@example.com");
+      expect(result.summary).not.toContain("192.168.1.1");
+      expect(result.summary).toContain("key=");
+    });
+
+    it("should redact sensitive data when using summaryFields", () => {
+      const entry = mockEntry({
+        jsonPayload: {
+          userEmail: "admin@example.com",
+          ipAddress: "192.168.1.100",
+          status: "success"
+        },
+        labels: {
+          creditCard: "1234-5678-9012-3456"
+        }
+      });
+      const summaryFields = ["jsonPayload.userEmail", "jsonPayload.ipAddress", "labels.creditCard"];
+      const result = summarize(entry, summaryFields);
+      
+      // Should include field names but redact sensitive values
+      expect(result.summary).toContain("jsonPayload.userEmail:");
+      expect(result.summary).toContain("jsonPayload.ipAddress:");
+      expect(result.summary).toContain("labels.creditCard:");
+      
+      // Should NOT include actual sensitive data
+      expect(result.summary).not.toContain("admin@example.com");
+      expect(result.summary).not.toContain("192.168.1.100");
+      expect(result.summary).not.toContain("1234-5678-9012-3456");
+      
+      // Should contain redacted markers
+      expect(result.summary).toContain("****");
+    });
+
+    it("should handle mixed sensitive and non-sensitive fields", () => {
+      const entry = mockEntry({
+        jsonPayload: {
+          message: "Processing request",
+          userEmail: "user@example.com",
+          requestId: "req-123"
+        }
+      });
+      const summaryFields = ["jsonPayload.message", "jsonPayload.userEmail", "jsonPayload.requestId"];
+      const result = summarize(entry, summaryFields);
+      
+      // Non-sensitive data should remain
+      expect(result.summary).toContain("Processing request");
+      expect(result.summary).toContain("req-123");
+      
+      // Sensitive data should be redacted
+      expect(result.summary).not.toContain("user@example.com");
+    });
   });
 });
