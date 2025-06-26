@@ -34,13 +34,31 @@ const extractLogSummaryText = (entry: RawLogEntry, summaryFields?: string[]): st
     : extractSummaryWithoutFields(entry);
 };
 
+const serializeValue = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'object' && value !== null) {
+    try {
+      // Pretty-print objects with 2-space indentation, but limit depth
+      const json = JSON.stringify(value, null, 2);
+      // If the JSON is too long, compact it
+      return json.length > 500 ? JSON.stringify(value) : json;
+    } catch {
+      // Handle circular references or other stringify errors
+      return '[Complex Object]';
+    }
+  }
+  return String(value);
+};
+
 const processSummaryFields = (fields: string[], entry: RawLogEntry): string => {
   const parts: string[] = [];
   
   for (const field of fields) {
     const value = viewPath(field, entry);
     if (value !== null && value !== undefined) {
-      parts.push(`${field}: ${String(value)}`);
+      parts.push(`${field}: ${serializeValue(value)}`);
     }
   }
   
