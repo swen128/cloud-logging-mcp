@@ -51,37 +51,31 @@ describe("time-range functions", () => {
       const result = buildTimestampFilter("2024-01-01T00:00:00Z", "2024-01-01T23:59:59Z");
       expect(result.isOk()).toBe(true);
       const filter = result._unsafeUnwrap();
-      expect(filter).toContain('timestamp>="2024-01-01T00:00:00Z"');
-      expect(filter).toContain('timestamp<="2024-01-01T23:59:59Z"');
-      expect(filter).toContain(' AND ');
+      expect(filter).toBe('timestamp>="2024-01-01T00:00:00Z" AND timestamp<="2024-01-01T23:59:59Z"');
     });
     
-    it("should build filter with only start time", () => {
-      const result = buildTimestampFilter("2024-01-01T00:00:00Z", undefined);
-      expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap()).toBe('timestamp>="2024-01-01T00:00:00Z"');
+    it("should return error for invalid start time", () => {
+      const result = buildTimestampFilter("invalid", "2024-01-01T23:59:59Z");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toContain("Invalid time format");
     });
     
-    it("should build filter with only end time", () => {
-      const result = buildTimestampFilter(undefined, "2024-01-01T23:59:59Z");
-      expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap()).toBe('timestamp<="2024-01-01T23:59:59Z"');
+    it("should return error for invalid end time", () => {
+      const result = buildTimestampFilter("2024-01-01T00:00:00Z", "invalid");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toContain("Invalid time format");
     });
     
-    it("should return empty string when no times provided", () => {
-      const result1 = buildTimestampFilter();
-      expect(result1.isOk()).toBe(true);
-      expect(result1._unsafeUnwrap()).toBe("");
-      
-      const result2 = buildTimestampFilter(undefined, undefined);
-      expect(result2.isOk()).toBe(true);
-      expect(result2._unsafeUnwrap()).toBe("");
+    it("should return error for invalid date in start time", () => {
+      const result = buildTimestampFilter("2024-13-01T00:00:00Z", "2024-01-01T23:59:59Z");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toContain("Invalid date");
     });
     
-    it("should handle empty strings", () => {
-      const result = buildTimestampFilter("", "");
-      expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap()).toBe("");
+    it("should return error for invalid date in end time", () => {
+      const result = buildTimestampFilter("2024-01-01T00:00:00Z", "2024-13-01T23:59:59Z");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toContain("Invalid date");
     });
   });
   

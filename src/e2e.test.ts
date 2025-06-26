@@ -306,6 +306,8 @@ describe.skipIf(skipE2E)("MCP Server E2E Tests", () => {
         arguments: {
           projectId: "test-project",
           filter: "severity >= ERROR",
+          startTime: "2024-01-01T00:00:00Z",
+          endTime: "2024-12-31T23:59:59Z",
           pageSize: 5,
         },
       },

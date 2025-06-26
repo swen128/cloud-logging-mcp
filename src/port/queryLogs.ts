@@ -8,14 +8,8 @@ import type { Tool } from "./types";
 export const queryLogsInputSchema = z.object({
   projectId: z.string().describe("Google Cloud project ID"),
   filter: z.string(),
-  startTime: z
-    .string()
-    .optional()
-    .describe("Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')"),
-  endTime: z
-    .string()
-    .optional()
-    .describe("End time in ISO 8601 format (e.g., '2024-01-01T23:59:59Z')"),
+  startTime: z.string().describe("Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')"),
+  endTime: z.string().describe("End time in ISO 8601 format (e.g., '2024-01-01T23:59:59Z')"),
   resourceNames: z
     .array(
       z.string({
@@ -48,7 +42,7 @@ export const queryLogsTool = (dependencies: {
   return {
     name: "queryLogs",
     description:
-      "Query Google Cloud logs with optional time range. Time filters: use startTime/endTime with ISO 8601 format (e.g., '2024-01-01T00:00:00Z'). Filters are combined with AND.",
+      "Query Google Cloud logs within a specified time range. Time filters are required: use startTime/endTime with ISO 8601 format (e.g., '2024-01-01T00:00:00Z'). All filters are combined with AND.",
     inputSchema: queryLogsInputSchema,
     handler: async ({
       input,

@@ -26,17 +26,17 @@ describe("queryLogs input validation", () => {
     expect(result.success).toBe(true);
   });
   
-  it("should accept input without time range", () => {
+  it("should reject input without time range", () => {
     const input = {
       projectId: "test-project",
       filter: 'resource.type="k8s_container"',
     };
     
     const result = queryLogsInputSchema.safeParse(input);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
   
-  it("should accept input with only startTime", () => {
+  it("should reject input with only startTime", () => {
     const input = {
       projectId: "test-project",
       filter: "",
@@ -44,7 +44,7 @@ describe("queryLogs input validation", () => {
     };
     
     const result = queryLogsInputSchema.safeParse(input);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
   
   it("should reject input without projectId", () => {
@@ -60,7 +60,19 @@ describe("queryLogs input validation", () => {
   it("should reject input without filter", () => {
     const input = {
       projectId: "test-project",
-      startTime: "-1h",
+      startTime: "2024-01-01T00:00:00Z",
+      endTime: "2024-01-01T23:59:59Z",
+    };
+    
+    const result = queryLogsInputSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+  
+  it("should reject input with only endTime", () => {
+    const input = {
+      projectId: "test-project",
+      filter: "",
+      endTime: "2024-01-01T23:59:59Z",
     };
     
     const result = queryLogsInputSchema.safeParse(input);

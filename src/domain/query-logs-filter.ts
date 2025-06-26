@@ -3,8 +3,8 @@ import { buildTimestampFilter, combineFilters } from "./time-range";
 
 interface QueryLogsFilterInput {
   filter: string;
-  startTime?: string;
-  endTime?: string;
+  startTime: string;
+  endTime: string;
 }
 
 /**

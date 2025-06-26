@@ -22,39 +22,29 @@ export const validateTimeString = (timeStr: string): Result<string, Error> => {
 
 /**
  * Builds a timestamp filter clause for Google Cloud Logging
- * @param startTime Optional start time
- * @param endTime Optional end time
- * @returns Filter clause string or empty string if no time range specified
+ * @param startTime Start time in ISO 8601 format
+ * @param endTime End time in ISO 8601 format
+ * @returns Filter clause string with both time constraints
  */
-export const buildTimestampFilter = (startTime?: string, endTime?: string): Result<string, Error> => {
-  const filters: string[] = [];
-  
-  if (startTime !== undefined && startTime !== '') {
-    const validatedStart = validateTimeString(startTime);
-    if (validatedStart.isErr()) {
-      return err(validatedStart.error);
-    }
-    filters.push(`timestamp>="${validatedStart.value}"`);
+export const buildTimestampFilter = (startTime: string, endTime: string): Result<string, Error> => {
+  const validatedStart = validateTimeString(startTime);
+  if (validatedStart.isErr()) {
+    return err(validatedStart.error);
   }
   
-  if (endTime !== undefined && endTime !== '') {
-    const validatedEnd = validateTimeString(endTime);
-    if (validatedEnd.isErr()) {
-      return err(validatedEnd.error);
-    }
-    filters.push(`timestamp<="${validatedEnd.value}"`);
+  const validatedEnd = validateTimeString(endTime);
+  if (validatedEnd.isErr()) {
+    return err(validatedEnd.error);
   }
   
-  // Validate time range if both are provided
-  if (filters.length === 2 && startTime !== undefined && startTime !== '' && endTime !== undefined && endTime !== '') {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    if (start >= end) {
-      return err(new Error('Start time must be before end time'));
-    }
+  // Validate time range
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  if (start >= end) {
+    return err(new Error('Start time must be before end time'));
   }
   
-  return ok(filters.join(' AND '));
+  return ok(`timestamp>="${validatedStart.value}" AND timestamp<="${validatedEnd.value}"`);
 };
 
 /**
