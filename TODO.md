@@ -34,42 +34,49 @@ Implementation approach:
 3. Modify queryLogs and getLogDetail to require projectId
 4. Update input schemas to make projectId required
 
-### 1. Test the MCP Server
+### 1. High Priority TODOs (From Dropped Commits)
+- [ ] **Implement retry logic with exponential backoff** - Add automatic retry for transient Google Cloud API failures
+- [ ] **Fix object serialization in summaries** - Objects currently show as "[Object object]" in log summaries
+- [ ] **Add time range arguments to queryLogs** - Support startTime/endTime parameters with ISO 8601 and relative time (e.g., "-1h", "-24h", "-7d")
+- [ ] **Document SEARCH function and query syntax** - Add comprehensive documentation for Google Cloud Logging query syntax
+- [ ] **Fix all linting errors** - Resolve TypeScript strict mode violations (no any, no type assertions, etc.)
+
+### 2. Test the MCP Server
 - [ ] Run `bun run src/main.ts` to verify the server starts correctly
 - [ ] Test with Claude Code to ensure the tools are available
 - [ ] Verify you can query logs from your Google Cloud project
 
-### 2. Configure ESLint (Optional)
+### 3. Configure ESLint (Optional)
 - [x] ~~The ESLint configuration is missing - add `.eslintrc.js` or `eslint.config.js`~~ (`.eslintrc.json` exists)
 - [x] ~~Current lint script in package.json won't work without proper config~~ (ESLint is properly configured)
 
-### 3. Code-Level TODOs
+### 4. Code-Level TODOs
 - [ ] **Extract shared Tool type** - The `Tool<InputSchema>` type is duplicated in queryLogs.ts and getLogDetail.ts
 - [ ] **Add redaction tests** - Add tests for sensitive information redaction in log summaries (marked as TODO in log-entry.test.ts)
 
-### 4. Implement Additional Features (Optional)
+### 5. Implement Additional Features (Optional)
 - [ ] Add support for resource name filtering
 - [ ] Implement log streaming/tailing functionality
 - [ ] Add more sophisticated query builders
 - [ ] Support for structured logging queries
 - [ ] Add metrics/telemetry for monitoring MCP server usage
 
-### 5. Production Considerations
+### 6. Production Considerations
 - [ ] Add proper logging for the MCP server itself
-- [ ] Implement retry logic with exponential backoff
+- [ ] ~~Implement retry logic with exponential backoff~~ (moved to high priority)
 - [ ] Add connection pooling for better performance
 - [ ] Consider adding request/response validation middleware
 - [ ] Add health check endpoint
 
-### 6. Testing Improvements
+### 7. Testing Improvements
 - [ ] Add integration tests with real Google Cloud Logging API
 - [ ] Add tests for error scenarios (network failures, auth issues)
 - [ ] Add performance benchmarks for cache effectiveness
 - [ ] Test with large log volumes
 
-### 7. Documentation Enhancements
-- [ ] Add example queries for common use cases
-- [ ] Document the Google Cloud Logging query syntax
+### 8. Documentation Enhancements
+- [ ] ~~Add example queries for common use cases~~ (moved to high priority)
+- [ ] ~~Document the Google Cloud Logging query syntax~~ (moved to high priority)
 - [ ] Add troubleshooting for common permission issues
 - [ ] Create a video tutorial for setup
 
