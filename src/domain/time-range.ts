@@ -1,21 +1,23 @@
+import { Result, ok, err } from "neverthrow";
+
 /**
  * Validate time string is in ISO 8601 format
  * @param timeStr Time string in ISO 8601 format
- * @returns The time string if valid
+ * @returns Result with the time string if valid, or error
  */
-export const validateTimeString = (timeStr: string): string => {
+export const validateTimeString = (timeStr: string): Result<string, Error> => {
   // Basic ISO 8601 validation
   if (!timeStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
-    throw new Error(`Invalid time format: ${timeStr}. Expected ISO 8601 format (e.g., 2024-01-01T00:00:00Z)`);
+    return err(new Error(`Invalid time format: ${timeStr}. Expected ISO 8601 format (e.g., 2024-01-01T00:00:00Z)`));
   }
   
   // Verify it's a valid date
   const date = new Date(timeStr);
   if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date: ${timeStr}`);
+    return err(new Error(`Invalid date: ${timeStr}`));
   }
   
-  return timeStr;
+  return ok(timeStr);
 };
 
 /**
@@ -24,20 +26,35 @@ export const validateTimeString = (timeStr: string): string => {
  * @param endTime Optional end time
  * @returns Filter clause string or empty string if no time range specified
  */
-export const buildTimestampFilter = (startTime?: string, endTime?: string): string => {
+export const buildTimestampFilter = (startTime?: string, endTime?: string): Result<string, Error> => {
   const filters: string[] = [];
   
   if (startTime !== undefined && startTime !== '') {
     const validatedStart = validateTimeString(startTime);
-    filters.push(`timestamp>="${validatedStart}"`);
+    if (validatedStart.isErr()) {
+      return err(validatedStart.error);
+    }
+    filters.push(`timestamp>="${validatedStart.value}"`);
   }
   
   if (endTime !== undefined && endTime !== '') {
     const validatedEnd = validateTimeString(endTime);
-    filters.push(`timestamp<="${validatedEnd}"`);
+    if (validatedEnd.isErr()) {
+      return err(validatedEnd.error);
+    }
+    filters.push(`timestamp<="${validatedEnd.value}"`);
   }
   
-  return filters.join(' AND ');
+  // Validate time range if both are provided
+  if (filters.length === 2 && startTime !== undefined && startTime !== '' && endTime !== undefined && endTime !== '') {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (start >= end) {
+      return err(new Error('Start time must be before end time'));
+    }
+  }
+  
+  return ok(filters.join(' AND '));
 };
 
 /**
@@ -59,23 +76,3 @@ export const combineFilters = (existingFilter: string, timestampFilter: string):
   return `(${existingFilter}) AND ${timestampFilter}`;
 };
 
-/**
- * Validates that start time is before end time
- * @param startTime Start time string
- * @param endTime End time string
- * @returns true if valid, throws error if invalid
- */
-export const validateTimeRange = (startTime?: string, endTime?: string): boolean => {
-  if (startTime === undefined || startTime === '' || endTime === undefined || endTime === '') {
-    return true;
-  }
-  
-  const start = new Date(validateTimeString(startTime));
-  const end = new Date(validateTimeString(endTime));
-  
-  if (start >= end) {
-    throw new Error('Start time must be before end time');
-  }
-  
-  return true;
-};
