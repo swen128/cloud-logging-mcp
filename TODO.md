@@ -8,25 +8,29 @@
 - ~~Configuration support (environment variables and code-based)~~ Environment variables removed - only uses ADC
 - In-memory caching with TTL and size limits
 - Type-safe implementation ~~with branded types~~ using interface pattern for LogId
-- All tests passing (71 tests, including unit tests for pure functions)
+- All tests passing (119 tests, including unit tests for pure functions)
 - Comprehensive README documentation
 - `.mcp.json` created with your project ID (dinii-self-develop)
-- ESLint configured with TypeScript support and arrow-body-style rule
+- ESLint configured with TypeScript support, arrow-body-style rule, and ban-ts-comment
 - Pure functions extracted for better testability
 - listProjects tool implemented
+- Time range (startTime/endTime) made required for queryLogs
+- Object serialization fixed in log summaries
+- Comprehensive query syntax documentation added to tool descriptions
+- All TypeScript comment directives (@ts-ignore, etc.) banned and removed
 
 ## Remaining Tasks
 
 ### 🔴 TOP PRIORITY: Project ID Management
-- [ ] **Make projectId required** - Remove optional project ID and require explicit project ID in all tool calls
-  - Update input schemas to make projectId required
-  - Remove default project detection logic
-  - Update error messages to indicate projectId is required
+- [x] **Make projectId required** - Remove optional project ID and require explicit project ID in all tool calls
+  - ✅ Input schemas already require projectId
+  - ✅ No default project detection logic exists
+  - ✅ projectId is required in all tool calls
 - [x] **Add `listProjects` tool** - Allow users to discover available Google Cloud projects
-  - Use Google Resource Manager API to list projects
-  - Show project ID, name, and status
+  - ✅ Use Google Resource Manager API to list projects
+  - ✅ Show project ID, name, and status
   - ~~Cache the project list for the session~~ (not implemented)
-- [ ] **Update tool descriptions** - Make it clear that projectId is required
+- [x] **Update tool descriptions** - Make it clear that projectId is required
 
 Implementation approach:
 1. ~~Add `@google-cloud/resource-manager` dependency~~ (already added)
@@ -35,11 +39,11 @@ Implementation approach:
 4. Update input schemas to make projectId required
 
 ### 1. High Priority TODOs (From Dropped Commits)
-- [ ] **Implement retry logic with exponential backoff** - Add automatic retry for transient Google Cloud API failures
-- [x] **Fix object serialization in summaries** - Objects currently show as "[Object object]" in log summaries
-- [x] **Add time range arguments to queryLogs** - Support startTime/endTime parameters with ISO 8601 format
-- [ ] **Document SEARCH function and query syntax** - Add comprehensive documentation for Google Cloud Logging query syntax
-- [ ] **Fix all linting errors** - Resolve TypeScript strict mode violations (no any, no type assertions, etc.)
+- [x] ~~**Implement retry logic with exponential backoff**~~ - Not needed, AI agents handle retries
+- [x] **Fix object serialization in summaries** - Objects now properly serialized with JSON.stringify
+- [x] **Add time range arguments to queryLogs** - startTime/endTime are now required parameters
+- [x] **Document SEARCH function and query syntax** - Added comprehensive documentation in tool descriptions
+- [x] **Fix all linting errors** - All TypeScript strict mode violations resolved, banned @ts-ignore
 
 ### 2. Test the MCP Server
 - [ ] Run `bun run src/main.ts` to verify the server starts correctly
@@ -51,8 +55,8 @@ Implementation approach:
 - [x] ~~Current lint script in package.json won't work without proper config~~ (ESLint is properly configured)
 
 ### 4. Code-Level TODOs
-- [ ] **Extract shared Tool type** - The `Tool<InputSchema>` type is duplicated in queryLogs.ts and getLogDetail.ts
-- [ ] **Add redaction tests** - Add tests for sensitive information redaction in log summaries (marked as TODO in log-entry.test.ts)
+- [x] **Extract shared Tool type** - Already extracted in `/port/types.ts`, all tools use it
+- [x] **Add redaction tests** - Comprehensive redaction tests already implemented in log-entry.test.ts
 
 ### 5. Implement Additional Features (Optional)
 - [ ] Add support for resource name filtering
