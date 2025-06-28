@@ -7,7 +7,7 @@ import type { Tool } from "./types";
 
 export const queryLogsInputSchema = z.object({
   projectId: z.string().describe("Google Cloud project ID"),
-  filter: z.string(),
+  filter: z.string().describe("Cloud Logging filter expression. Use SEARCH() for full-text search, field comparisons for specific filters. Examples: severity>=ERROR, resource.type=\"k8s_container\", SEARCH(\"error message\")"),
   startTime: z.string().describe("Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')"),
   endTime: z.string().describe("End time in ISO 8601 format (e.g., '2024-01-01T23:59:59Z')"),
   resourceNames: z
@@ -41,8 +41,25 @@ export const queryLogsTool = (dependencies: {
 }): Tool<typeof queryLogsInputSchema> => {
   return {
     name: "queryLogs",
-    description:
-      "Query Google Cloud logs within a specified time range. Time filters are required: use startTime/endTime with ISO 8601 format (e.g., '2024-01-01T00:00:00Z'). All filters are combined with AND.",
+    description: `Query Google Cloud logs using the powerful Cloud Logging filter syntax.
+
+FILTER SYNTAX:
+- Operators: = != > >= < <= : (contains) =~ (regex match) !~ (regex not match)
+- Boolean: AND OR NOT and parentheses ()
+- Common fields: severity, timestamp, resource.type, resource.labels.*, textPayload, jsonPayload.*, labels.*, logName
+
+SEARCH FUNCTION:
+Use SEARCH("text") for full-text search across all fields. Case-insensitive, searches nested JSON.
+
+EXAMPLES:
+- Severity: severity>=ERROR, severity=WARNING
+- Resource: resource.type="k8s_container", resource.labels.namespace_name="prod"
+- Text search: textPayload:"error", jsonPayload.message:"timeout", SEARCH("OutOfMemoryError")
+- Complex: resource.type="cloud_run_revision" AND severity>=ERROR AND SEARCH("database")
+- JSON queries: jsonPayload.request.method="POST", jsonPayload.response.status>=500
+- Regex: textPayload=~"Error: .*timeout.*"
+
+Time range is REQUIRED. Use ISO 8601 format for startTime/endTime.`,
     inputSchema: queryLogsInputSchema,
     handler: async ({
       input,
